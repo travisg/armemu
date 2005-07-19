@@ -1,0 +1,5 @@
+#!/bin/sh
+
+make &&
+make testbin &&
+./build-generic/armemu -c arm926ejs -b test/test.bin
