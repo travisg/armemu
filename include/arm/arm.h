@@ -35,12 +35,6 @@ typedef word armaddr_t;
 // used in ASSERT() so declared up front
 void panic_cpu(const char *fmt, ...);
 
-struct banked_regs {
-	reg_t r13;
-	reg_t r14;
-	reg_t spsr;
-};
-
 enum arm_instruction_set {
 	ARM_V4 = 0,
 	ARM_V5,
@@ -144,13 +138,12 @@ struct cpu_struct {
 	struct arm_coprocessor coproc[16];
 
 	// banked_regs
-	struct banked_regs usr_regs;
-	struct banked_regs irq_regs;
-	struct banked_regs svc_regs;
-	struct banked_regs abt_regs;
-	struct banked_regs fiq_regs;
-	struct banked_regs und_regs;
-
+	reg_t usr_regs[2]; // sp, lr
+	reg_t irq_regs[3]; // sp, lr, spsr
+	reg_t svc_regs[3]; //     "
+	reg_t abt_regs[3]; //     "
+	reg_t und_regs[3]; //     "
+	reg_t fiq_regs[8]; // r8-r12, sp, lr, spsr
 };
 
 extern struct cpu_struct cpu;

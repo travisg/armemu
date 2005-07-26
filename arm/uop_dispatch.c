@@ -1011,9 +1011,9 @@ static inline __ALWAYS_INLINE void uop_load_multiple_s(struct uop *op)
 				return;
 			}
 			if(i == 13)
-				cpu.usr_regs.r13 = temp_word;
+				cpu.usr_regs[0] = temp_word;
 			else // i == 14
-				cpu.usr_regs.r14 = temp_word;
+				cpu.usr_regs[1] = temp_word;
 			temp_addr2 += 4;
 		}
 		reg_list >>= 1;
@@ -1107,9 +1107,9 @@ static inline __ALWAYS_INLINE void uop_store_multiple_s(struct uop *op)
 	for(i = 13; i < 16; i++) {
 		if(reg_list & 1) {
 			if(i == 13)
-				temp_word = cpu.usr_regs.r13;
+				temp_word = cpu.usr_regs[0];
 			else if(i == 14)
-				temp_word = cpu.usr_regs.r14;
+				temp_word = cpu.usr_regs[1];
 			else 
 				temp_word = get_reg(i);
 			if(mmu_write_mem_word(temp_addr2, temp_word))
@@ -2119,18 +2119,38 @@ static inline __ALWAYS_INLINE void uop_multiply(struct uop *op)
 
 static inline __ALWAYS_INLINE void uop_move_to_sr_imm(struct uop *op) 
 {
+	reg_t old_psr, new_psr;
+
 	if(op->flags & UOPMSR_R_BIT) {
 		// spsr
-		cpu.spsr = (cpu.spsr & ~op->move_to_sr_imm.field_mask) | op->move_to_sr_imm.immediate;
+		old_psr = cpu.spsr;
 	} else {
 		// cpsr
-		reg_t target_reg = (cpu.cpsr & ~op->move_to_sr_imm.field_mask) | op->move_to_sr_imm.immediate;
-		set_cpu_mode(target_reg & PSR_MODE_MASK);
-		cpu.cpsr = target_reg;
+		old_psr = cpu.cpsr;
+	}
+	
+	word field_mask = op->move_to_sr_imm.field_mask;
+	
+	// if we're in user mode, we can only modify the top 8 bits
+	if(!arm_in_priviledged())
+		field_mask &= 0xff000000;
+
+	// or in the new immediate value
+	new_psr = (old_psr & ~field_mask) | (op->move_to_sr_imm.immediate & field_mask);
+
+	// write the new value back
+	if(op->flags & UOPMSR_R_BIT) {
+		// spsr
+		// NOTE: UNPREDICTABLE if the cpu is in user or system mode
+		cpu.spsr = new_psr;
+	} else {
+		// cpsr
+		set_cpu_mode(new_psr & PSR_MODE_MASK);
+		cpu.cpsr = new_psr;
 
 #if COUNT_CYCLES
 		// cycle count
-		if(op->move_to_sr_imm.field_mask & 0x00ffffff)
+		if(field_mask & 0x00ffffff)
 			add_to_perf_counter(CYCLE_COUNT, 2); // we updated something other than the status flags
 #endif
 	}
@@ -2142,19 +2162,39 @@ static inline __ALWAYS_INLINE void uop_move_to_sr_imm(struct uop *op)
 
 static inline __ALWAYS_INLINE void uop_move_to_sr_reg(struct uop *op) 
 {
-	word temp_word = get_reg(op->move_to_sr_reg.reg);
+	reg_t old_psr, new_psr;
+
 	if(op->flags & UOPMSR_R_BIT) {
 		// spsr
-		cpu.spsr = (cpu.spsr & ~op->move_to_sr_reg.field_mask) | temp_word;
+		old_psr = cpu.spsr;
 	} else {
 		// cpsr
-		reg_t target_reg = (cpu.cpsr & ~op->move_to_sr_reg.field_mask) | temp_word;
-		set_cpu_mode(target_reg & PSR_MODE_MASK);
-		cpu.cpsr = target_reg;
+		old_psr = cpu.cpsr;
+	}
+	
+	word field_mask = op->move_to_sr_imm.field_mask;
+	word temp_word = get_reg(op->move_to_sr_reg.reg);
+	
+	// if we're in user mode, we can only modify the top 8 bits
+	if(!arm_in_priviledged())
+		field_mask &= 0xff000000;
+
+	// or in the new immediate value
+	new_psr = (old_psr & ~field_mask) | (temp_word & field_mask);
+
+	// write the new value back
+	if(op->flags & UOPMSR_R_BIT) {
+		// spsr
+		// NOTE: UNPREDICTABLE if the cpu is in user or system mode
+		cpu.spsr = new_psr;
+	} else {
+		// cpsr
+		set_cpu_mode(new_psr & PSR_MODE_MASK);
+		cpu.cpsr = new_psr;
 
 #if COUNT_CYCLES
 		// cycle count
-		if(op->move_to_sr_reg.field_mask & 0x00ffffff)
+		if(field_mask & 0x00ffffff)
 			add_to_perf_counter(CYCLE_COUNT, 2); // we updated something other than the status flags
 #endif
 	}
@@ -2167,6 +2207,7 @@ static inline __ALWAYS_INLINE void uop_move_to_sr_reg(struct uop *op)
 static inline __ALWAYS_INLINE void uop_move_from_sr(struct uop *op) 
 {
 	if(op->flags & UOPMSR_R_BIT) {
+		// NOTE: UNPREDICTABLE if the cpu is in user or system mode
 		put_reg(op->move_from_sr.reg, cpu.spsr);
 	} else {
 		put_reg(op->move_from_sr.reg, cpu.cpsr);

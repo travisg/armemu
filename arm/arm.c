@@ -183,8 +183,7 @@ int start_cpu(int cycle_count)
 
 void set_cpu_mode(int new_mode)
 {
-	struct banked_regs *regs_from;
-	struct banked_regs *regs_to;
+	reg_t *bank;
 	int old_mode = cpu.cpsr & PSR_MODE_MASK;
 
 	CPU_TRACE(4, "mode change: 0x%x to 0x%x\n", old_mode, new_mode);
@@ -196,25 +195,33 @@ void set_cpu_mode(int new_mode)
 	switch(old_mode) {
 		case PSR_MODE_user:
 		case PSR_MODE_sys:
-			regs_from = &cpu.usr_regs;
+			// usr and sys mode share the same "bank" of registers
+			cpu.usr_regs[0] = cpu.r[13]; // sp
+			cpu.usr_regs[1] = cpu.r[14]; // lr
 			break;
+
 		case PSR_MODE_fiq:
-			regs_from = &cpu.fiq_regs;
+			// fiq mode has a seperate bank for r8-r14, and spsr
+			memcpy(cpu.fiq_regs, &cpu.r[8], sizeof(reg_t) * 7); // r8-r14
+			cpu.fiq_regs[7] = cpu.spsr;
 			break;
+			
+		// the other 4 modes are similar, so select the bank and share the code
 		case PSR_MODE_irq:
-			regs_from = &cpu.irq_regs;
-			break;
+			bank = cpu.irq_regs;
+			goto save_3reg;
 		case PSR_MODE_svc:
-			regs_from = &cpu.svc_regs;
-			break;
+			bank = cpu.svc_regs;
+			goto save_3reg;
 		case PSR_MODE_abt:
-			regs_from = &cpu.abt_regs;
-			break;
+			bank = cpu.abt_regs;
+			goto save_3reg;
 		case PSR_MODE_und:
-			regs_from = &cpu.und_regs;
-			break;
-		default:
-			regs_from = NULL;
+			bank = cpu.und_regs;
+save_3reg:
+			bank[0] = cpu.r[13]; // sp
+			bank[1] = cpu.r[14]; // lr
+			bank[2] = cpu.spsr;  // spsr
 			break;
 	}
 
@@ -222,38 +229,34 @@ void set_cpu_mode(int new_mode)
 	switch(new_mode) {
 		case PSR_MODE_user:
 		case PSR_MODE_sys:
-			regs_to = &cpu.usr_regs;
+			// usr and sys mode share the same "bank" of registers
+			cpu.r[13] = cpu.usr_regs[0];
+			cpu.r[14] = cpu.usr_regs[1];
 			break;
-		case PSR_MODE_fiq:
-			regs_to = &cpu.fiq_regs;
-			break;
-		case PSR_MODE_irq:
-			regs_to = &cpu.irq_regs;
-			break;
-		case PSR_MODE_svc:
-			regs_to = &cpu.svc_regs;
-			break;
-		case PSR_MODE_abt:
-			regs_to = &cpu.abt_regs;
-			break;
-		case PSR_MODE_und:
-			regs_to = &cpu.und_regs;
-			break;
-		default:
-			regs_to = NULL;
-			break;
-	}
 
-	// save and copy the banked regs
-	if(regs_from) {
-		regs_from->r13 = cpu.r[13];
-		regs_from->r14 = cpu.r[14];
-		regs_from->spsr = cpu.spsr;
-	}
-	if(regs_to) {
-		cpu.r[13] = regs_to->r13;
-		cpu.r[14] = regs_to->r14;
-		cpu.spsr = regs_to->spsr;
+		case PSR_MODE_fiq:
+			// fiq mode has a seperate bank for r8-r14, and spsr
+			memcpy(&cpu.r[8], cpu.fiq_regs, sizeof(reg_t) * 7); // r8-r14
+			cpu.spsr = cpu.fiq_regs[7];
+			break;
+
+		// the other 4 modes are similar, so select the bank and share the code
+		case PSR_MODE_irq:
+			bank = cpu.irq_regs;
+			goto restore_3reg;
+		case PSR_MODE_svc:
+			bank = cpu.svc_regs;
+			goto restore_3reg;
+		case PSR_MODE_abt:
+			bank = cpu.abt_regs;
+			goto restore_3reg;
+		case PSR_MODE_und:
+			bank = cpu.und_regs;
+restore_3reg:
+			cpu.r[13] = bank[0]; // sp
+			cpu.r[14] = bank[1]; // lr
+			cpu.spsr = bank[2];  // spsr
+			break;
 	}
 
 	// set the mode bits
@@ -433,8 +436,8 @@ bool process_pending_exceptions(void)
 
 	// undefined instruction
 	if(cpu.pending_exceptions & EX_UNDEFINED) {
-		cpu.und_regs.r14 = cpu.pc + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the undefined instruction
-		cpu.und_regs.spsr = cpu.cpsr;
+		cpu.und_regs[1] = cpu.pc + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the undefined instruction
+		cpu.und_regs[2] = cpu.cpsr;
 		put_reg(PC, 0x4);
 
 		if(get_condition(PSR_THUMB))
@@ -445,7 +448,7 @@ bool process_pending_exceptions(void)
 
 		atomic_and(&cpu.pending_exceptions, ~EX_UNDEFINED);
 
-		CPU_TRACE(3, "EX: undefined instruction at 0x%08x\n", cpu.und_regs.r14 - 4);
+		CPU_TRACE(3, "EX: undefined instruction at 0x%08x\n", cpu.und_regs[1] - 4);
 		inc_perf_counter(EXCEPTIONS);
 
 		return TRUE;
@@ -453,8 +456,8 @@ bool process_pending_exceptions(void)
 
 	// SWI instruction
 	if(cpu.pending_exceptions & EX_SWI) {
-		cpu.svc_regs.r14 = cpu.pc + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the swi instruction
-		cpu.svc_regs.spsr = cpu.cpsr;
+		cpu.svc_regs[1] = cpu.pc + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the swi instruction
+		cpu.svc_regs[2] = cpu.cpsr;
 		put_reg(PC, 0x8);
 
 		if(get_condition(PSR_THUMB))
@@ -473,8 +476,8 @@ bool process_pending_exceptions(void)
 
 	// prefetch abort
 	if(cpu.pending_exceptions & EX_PREFETCH) {
-		cpu.abt_regs.r14 = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the aborted instruction
-		cpu.abt_regs.spsr = cpu.cpsr;
+		cpu.abt_regs[1] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the aborted instruction
+		cpu.abt_regs[2] = cpu.cpsr;
 		put_reg(PC, 0xc);
 
 		if(get_condition(PSR_THUMB))
@@ -493,8 +496,8 @@ bool process_pending_exceptions(void)
 
 	// data abort
 	if(cpu.pending_exceptions & EX_DATA_ABT) {
-		cpu.abt_regs.r14 = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // +8 from faulting instruction
-		cpu.abt_regs.spsr = cpu.cpsr;
+		cpu.abt_regs[1] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // +8 from faulting instruction
+		cpu.abt_regs[2] = cpu.cpsr;
 		put_reg(PC, 0x10);
 
 		if(get_condition(PSR_THUMB))
@@ -513,8 +516,8 @@ bool process_pending_exceptions(void)
 
 	// fiq
 	if(cpu.pending_exceptions & EX_FIQ && !(cpu.cpsr & PSR_FIQ_MASK)) {
-		cpu.fiq_regs.r14 = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // address of next instruction + 4
-		cpu.fiq_regs.spsr = cpu.cpsr;
+		cpu.fiq_regs[6] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // address of next instruction + 4
+		cpu.fiq_regs[7] = cpu.cpsr;
 		put_reg(PC, 0x1c);
 
 		if(get_condition(PSR_THUMB))
@@ -531,8 +534,8 @@ bool process_pending_exceptions(void)
 
 	// irq
 	if(cpu.pending_exceptions & EX_IRQ && !(cpu.cpsr & PSR_IRQ_MASK)) {
-		cpu.irq_regs.r14 = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // address of next instruction + 4
-		cpu.irq_regs.spsr = cpu.cpsr;
+		cpu.irq_regs[1] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // address of next instruction + 4
+		cpu.irq_regs[2] = cpu.cpsr;
 		put_reg(PC, 0x18);
 
 		if(get_condition(PSR_THUMB))
