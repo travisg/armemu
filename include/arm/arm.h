@@ -243,7 +243,9 @@ enum {
 #define ISNEG(x) BIT((x), 31)
 #define ISPOS(x) (!(BIT(x, 31)))
 
-#define SIGN_EXTEND(val, topbit) (BIT(val, topbit) ? ((val) | (0xffffffff << (topbit))) : (val)) 
+/* 32-bit sign extension */
+//#define SIGN_EXTEND(val, topbit) (BIT(val, topbit) ? ((val) | (0xffffffff << (topbit))) : (val)) 
+#define SIGN_EXTEND(val, topbit) (ASR(LSL(val, 32-(topbit)), 32-(topbit)))
 
 /* ARM routines */
 reg_t get_reg(int num);

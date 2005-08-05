@@ -31,116 +31,116 @@
 
 #define DATA_PROCESSING_OP_TABLE(opcode, result, a, b, arith_op, Rd_writeback, carry, ovl) \
 	switch(opcode) { \
-		case 0x0: /* AND */ \
+		case AOP_AND: /* AND */ \
 			result = a & b; \
 			break; \
-		case 0x1: /* EOR */ \
+		case AOP_EOR: /* EOR */ \
 			result = a ^ b; \
 			break; \
-		case 0x2: /* SUB */ \
+		case AOP_SUB: /* SUB */ \
 			result = do_add(a, -b, 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
-		case 0x3: /* RSB */ \
+		case AOP_RSB: /* RSB */ \
 			result = do_add(b, -a, 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
-		case 0x4: /* ADD */ \
+		case AOP_ADD: /* ADD */ \
 			result = do_add(a, b, 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
-		case 0x5: /* ADC */ \
+		case AOP_ADC: /* ADC */ \
 			result = do_add(a, b, get_condition(PSR_CC_CARRY) ? 1 : 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
-		case 0x6: /* SBC */ \
+		case AOP_SBC: /* SBC */ \
 			result = do_add(a, -b, get_condition(PSR_CC_CARRY) ? -1 : 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
-		case 0x7: /* RSC */ \
+		case AOP_RSC: /* RSC */ \
 			result = do_add(b, -a, get_condition(PSR_CC_CARRY) ? -1 : 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
-		case 0x8: /* TST */ \
+		case AOP_TST: /* TST */ \
 			result = a & b; \
 			Rd_writeback = 0; \
 			break; \
-		case 0x9: /* TEQ */ \
+		case AOP_TEQ: /* TEQ */ \
 			result = a ^ b; \
 			Rd_writeback = 0; \
 			break; \
-		case 0xa: /* CMP */ \
+		case AOP_CMP: /* CMP */ \
 			result = do_add(a, -b, 0, &carry, &ovl); \
 			Rd_writeback = 0; \
 			arith_op = 1; \
 			break; \
-		case 0xb: /* CMN */ \
+		case AOP_CMN: /* CMN */ \
 			result = do_add(a, b, 0, &carry, &ovl); \
 			Rd_writeback = 0; \
 			arith_op = 1; \
 			break; \
-		case 0xc: /* ORR */ \
+		case AOP_ORR: /* ORR */ \
 			result = a | b; \
 			break; \
-		case 0xd: /* MOV */ \
+		case AOP_MOV: /* MOV */ \
 			result = b; \
 			break; \
-		case 0xe: /* BIC */ \
+		case AOP_BIC: /* BIC */ \
 			result = a & (~b); \
 			break; \
-		case 0xf: /* MVN */ \
+		case AOP_MVN: /* MVN */ \
 			result = ~b; \
 			break; \
 	}
 
 #define DATA_PROCESSING_OP_TABLE_NOFLAGS(opcode, result, a, b) \
 	switch(opcode) { \
-		case 0x0: /* AND */ \
+		case AOP_AND: /* AND */ \
 			result = a & b; \
 			break; \
-		case 0x1: /* EOR */ \
+		case AOP_EOR: /* EOR */ \
 			result = a ^ b; \
 			break; \
-		case 0x2: /* SUB */ \
+		case AOP_SUB: /* SUB */ \
 			result = a - b; \
 			break; \
-		case 0x3: /* RSB */ \
+		case AOP_RSB: /* RSB */ \
 			result = b - a; \
 			break; \
-		case 0x4: /* ADD */ \
+		case AOP_ADD: /* ADD */ \
 			result = a + b; \
 			break; \
-		case 0x5: /* ADC */ \
+		case AOP_ADC: /* ADC */ \
 			result = a + b + get_condition(PSR_CC_CARRY) ? 1 : 0; \
 			break; \
-		case 0x6: /* SBC */ \
+		case AOP_SBC: /* SBC */ \
 			result = a - b + get_condition(PSR_CC_CARRY) ? -1 : 0; \
 			break; \
-		case 0x7: /* RSC */ \
+		case AOP_RSC: /* RSC */ \
 			result = b - a + get_condition(PSR_CC_CARRY) ? -1 : 0; \
 			break; \
-		case 0x8: /* TST */ \
+		case AOP_TST: /* TST */ \
 			result = a & b; \
 			break; \
-		case 0x9: /* TEQ */ \
+		case AOP_TEQ: /* TEQ */ \
 			result = a ^ b; \
 			break; \
-		case 0xa: /* CMP */ \
+		case AOP_CMP: /* CMP */ \
 			result = a - b; \
 			break; \
-		case 0xb: /* CMN */ \
+		case AOP_CMN: /* CMN */ \
 			result = a + b; \
 			break; \
-		case 0xc: /* ORR */ \
+		case AOP_ORR: /* ORR */ \
 			result = a | b; \
 			break; \
-		case 0xd: /* MOV */ \
+		case AOP_MOV: /* MOV */ \
 			result = b; \
 			break; \
-		case 0xe: /* BIC */ \
+		case AOP_BIC: /* BIC */ \
 			result = a & (~b); \
 			break; \
-		case 0xf: /* MVN */ \
+		case AOP_MVN: /* MVN */ \
 			result = ~b; \
 			break; \
 	}
