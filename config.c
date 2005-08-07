@@ -201,6 +201,9 @@ static int load_config_file(const char *filename)
 			/* trim the group buffer */
 			curr_group = trim_string(group_buf);		
 //			printf("load_config_file: group changed to '%s'\n", curr_group);
+		} else if(*s == '#') {
+			/* it's a comment, ignore */
+			continue;
 		} else {
 			/* assume it's a name value pair, in 'name = val' format */
 			char *name, *val;

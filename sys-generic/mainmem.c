@@ -89,7 +89,7 @@ int dump_mainmem(void)
 	return 0;
 }
 
-int initialize_mainmem(const char *binary_file)
+int initialize_mainmem(const char *rom_file)
 {
 	// allocate some ram
 	mainmem.size = MAINMEM_SIZE;
@@ -100,8 +100,8 @@ int initialize_mainmem(const char *binary_file)
 	install_mem_handler(mainmem.base, mainmem.size, &mainmem_get_put, &mainmem_get_ptr);
 
 	// read in a file, if specified
-	if(binary_file) {
-		FILE *fp = fopen(binary_file, "r");
+	if(rom_file) {
+		FILE *fp = fopen(rom_file, "r");
 		if(fp) {
 			fread(mainmem.mem, 1, mainmem.size, fp);
 			fclose(fp);

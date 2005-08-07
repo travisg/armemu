@@ -58,19 +58,19 @@ int main(int argc, char **argv)
 		int option_index = 0;
 
 		static struct option long_options[] = {
-			{"binary", 1, 0, 'b'},
+			{"rom", 1, 0, 'r'},
 			{"cpu", 1, 0, 'c'},
 			{0, 0, 0, 0},
 		};
 		
-		c = getopt_long(argc, argv, "b:c:", long_options, &option_index);
+		c = getopt_long(argc, argv, "r:c:", long_options, &option_index);
 		if(c == -1)
 			break;
 
 		switch(c) {
-			case 'b':
-				printf("load binary option: '%s'\n", optarg);
-				add_config_key("binary", "file", optarg);
+			case 'r':
+				printf("load rom option: '%s'\n", optarg);
+				add_config_key("rom", "file", optarg);
 				break;
 			case 'c':
 				printf("cpu core option: '%s'\n", optarg);

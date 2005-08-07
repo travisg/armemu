@@ -56,7 +56,7 @@ int initialize_system(void)
 	unsigned int i;
 	
 	// create a cpu
-	initialize_cpu(get_config_key_string("cpu", "core", NULL));
+	initialize_cpu(get_config_key_string("cpu", "core", "arm7tdmi"));
 
 	memset(&sys, 0, sizeof(sys));
 	
@@ -68,7 +68,7 @@ int initialize_system(void)
 	initialize_pic();
 
 	// initialize the main memory
-	initialize_mainmem(get_config_key_string("binary", "file", NULL));
+	initialize_mainmem(get_config_key_string("rom", "file", NULL));
 
 	// initialize the display
 	initialize_display();
