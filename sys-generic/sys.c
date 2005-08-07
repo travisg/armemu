@@ -27,6 +27,7 @@
 
 #include <SDL/SDL.h>
 
+#include <config.h>
 #include <arm/arm.h>
 #include <sys/sys.h>
 #include "sys_p.h"
@@ -50,12 +51,12 @@ struct sys {
 // function decls
 static word unhandled_get_put(armaddr_t address, word data, int size, int put);
 
-int initialize_system(const char *binary_file, const char *rom_file, const char *cpu_type)
+int initialize_system(void)
 {
 	unsigned int i;
 	
 	// create a cpu
-	initialize_cpu(cpu_type);
+	initialize_cpu(get_config_key_string("cpu", "core", NULL));
 
 	memset(&sys, 0, sizeof(sys));
 	
@@ -67,7 +68,7 @@ int initialize_system(const char *binary_file, const char *rom_file, const char 
 	initialize_pic();
 
 	// initialize the main memory
-	initialize_mainmem(binary_file, rom_file);
+	initialize_mainmem(get_config_key_string("binary", "file", NULL));
 
 	// initialize the display
 	initialize_display();
@@ -98,10 +99,10 @@ void system_reset(void)
 	reset_cpu();
 }
 
-void system_start(int cycles)
+void system_start(void)
 {
 	system_reset();
-	start_cpu(cycles);
+	start_cpu();
 }
 
 int system_message_loop(void)

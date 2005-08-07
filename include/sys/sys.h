@@ -26,9 +26,9 @@
 #include <systypes.h>
 #include <arm/arm.h>
 
-int initialize_system(const char *binfile, const char *romfile, const char *cpu_type);
+int initialize_system(void);
 void system_reset(void);
-void system_start(int cycles);
+void system_start(void);
 int system_message_loop(void);
 void install_mem_handler(armaddr_t base, armaddr_t len,
 	word (*get_put)(armaddr_t address, word data, int size, int put),

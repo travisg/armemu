@@ -165,13 +165,8 @@ static Uint32 speedtimer(Uint32 interval, void *param)
 	return interval;
 }
 
-int start_cpu(int cycle_count)
+int start_cpu(void)
 {
-	if(cycle_count > 0)
-		cpu.stop_at_cycle = cycle_count;
-	else
-		cpu.stop_at_cycle = -1;
-
 	// spawn a new thread for the cpu
 	SDL_CreateThread(&cpu_startup_thread_entry, NULL);
 

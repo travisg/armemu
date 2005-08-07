@@ -128,9 +128,6 @@ struct cpu_struct {
 	enum arm_instruction_set isa;
 	enum arm_core core;
 
-	// cycle count
-	int stop_at_cycle;
-
 	// tracks emulator performance including cycle count and instruction count
 	struct perf_counters perf_counters;
 
@@ -389,7 +386,7 @@ extern inline int get_instruction_count(void)
 /* function prototypes */
 int initialize_cpu(const char *cpu_type);
 void reset_cpu(void);
-int start_cpu(int cycle_count);
+int start_cpu(void);
 void dump_cpu(void);
 int build_condition_table(void);
 void install_coprocessor(int cp_num, struct arm_coprocessor *coproc);

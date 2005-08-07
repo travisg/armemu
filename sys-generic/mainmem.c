@@ -89,7 +89,7 @@ int dump_mainmem(void)
 	return 0;
 }
 
-int initialize_mainmem(const char *binary_file, const char *rom_file)
+int initialize_mainmem(const char *binary_file)
 {
 	// allocate some ram
 	mainmem.size = MAINMEM_SIZE;

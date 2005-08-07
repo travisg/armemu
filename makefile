@@ -43,6 +43,7 @@ all:: $(BUILDDIR)/$(TARGET)$(BINEXT) $(BUILDDIR)/$(TARGET).lst
 
 OBJS := \
 	main.o \
+	config.o \
 	debug.o \
 	arm/arm.o \
 	arm/arm_decoder.o \

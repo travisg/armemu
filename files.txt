@@ -15,10 +15,11 @@
 ./include/arm/ops.h
 
 ./main.c
-./armemu.c
 ./debug.c
+./config.c
 
 ./include/debug.h
+./include/config.h
 ./include/util/atomic.h
 ./include/util/endian.h
 ./include/options.h
@@ -60,3 +61,5 @@
 
 ./test/test.elf.lst
 ./build-generic/armemu.lst
+
+./armemu.conf

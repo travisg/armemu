@@ -29,10 +29,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
 
-static const char *opt_binary = NULL;
-static const char *opt_core = NULL;
-static const char *opt_romfile = NULL;
-static int opt_cycles = 0;
+#include <config.h>
 
 static void usage(int argc, char **argv)
 {
@@ -52,6 +49,10 @@ static int init_sdl(void)
 
 int main(int argc, char **argv)
 {
+	// load the configuration of the emulator from the command line and config file
+	load_config(argc, argv);
+
+	// read in any overriding configuration from the command line
 	for(;;) {
 		int c;
 		int option_index = 0;
@@ -59,31 +60,21 @@ int main(int argc, char **argv)
 		static struct option long_options[] = {
 			{"binary", 1, 0, 'b'},
 			{"cpu", 1, 0, 'c'},
-			{"numcycles", 1, 0, 'n'},
-			{"rom", 1, 0, 'r'},
 			{0, 0, 0, 0},
 		};
 		
-		c = getopt_long(argc, argv, "b:c:n:r:", long_options, &option_index);
+		c = getopt_long(argc, argv, "b:c:", long_options, &option_index);
 		if(c == -1)
 			break;
 
 		switch(c) {
 			case 'b':
 				printf("load binary option: '%s'\n", optarg);
-				opt_binary = optarg;
+				add_config_key("binary", "file", optarg);
 				break;
 			case 'c':
 				printf("cpu core option: '%s'\n", optarg);
-				opt_core = optarg;
-				break;
-			case 'n':
-				opt_cycles = atoi(optarg);
-				printf("cycle count option: '%d'\n", opt_cycles);
-				break;
-			case 'r':
-				printf("load romfile option: '%s'\n", optarg);
-				opt_romfile = optarg;
+				add_config_key("cpu", "core", optarg);
 				break;
 			default:
 				usage(argc, argv);
@@ -95,10 +86,10 @@ int main(int argc, char **argv)
 	init_sdl();
 
 	// initialize the system
-	initialize_system(opt_binary, opt_romfile, opt_core);
+	initialize_system();
 
 	// start the system, should spawn a cpu thread
-	system_start(opt_cycles);
+	system_start();
 
 	// run the SDL message loop
 	system_message_loop();
