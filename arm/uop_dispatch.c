@@ -2345,7 +2345,7 @@ int uop_dispatch_loop(void)
 		if(unlikely(cpu.r15_dirty)) {
 			UOP_TRACE(9, "r15 dirty\n");
 			cpu.r15_dirty = FALSE;
-			
+
 			if(cpu.curr_cp) {
 				if((cpu.pc >> MMU_PAGESIZE_SHIFT) == (cpu.r[PC] >> MMU_PAGESIZE_SHIFT)) {
 					cpu.cp_pc = &cpu.curr_cp->ops[(cpu.r[PC] % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
