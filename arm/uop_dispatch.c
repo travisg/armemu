@@ -223,6 +223,8 @@ const char *uop_opcode_to_str(int opcode)
 #undef OP_TO_STR
 }
 
+#define PC_TO_CPPC(pc) &cpu.curr_cp->ops[((pc) % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
+
 static inline unsigned int codepage_hash(armaddr_t address, bool thumb)
 {
 	unsigned int hash = (address / MMU_PAGESIZE);
@@ -236,7 +238,7 @@ static struct uop_codepage *lookup_codepage(armaddr_t pc, bool thumb)
 	armaddr_t cp_addr = pc & ~(MMU_PAGESIZE-1);
 	unsigned int hash;
 	struct uop_codepage *cp;
-	
+
 	hash = codepage_hash(cp_addr, thumb);
 
 	// search the hash chain for our codepage
@@ -250,60 +252,88 @@ static struct uop_codepage *lookup_codepage(armaddr_t pc, bool thumb)
 	return NULL;
 }
 
-static bool load_codepage(armaddr_t pc, bool thumb, bool priviledged, struct uop_codepage **_cp)
+static bool load_codepage_arm(armaddr_t pc, armaddr_t cp_addr, bool priviledged, struct uop_codepage **_cp, int *last_ins_index)
 {
-	armaddr_t cp_addr = pc & ~(MMU_PAGESIZE-1);
 	struct uop_codepage *cp;	
 	int i;
-	unsigned int hash;
-	int last_ins_index;
 
-	UOP_TRACE(4, "load_codepage: pc 0x%x\n", pc);
-
-	if(!thumb) {
-		cp = malloc(sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_ARM + 1));
-	} else {
-		cp = malloc(sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_THUMB + 1));
-	}
+	cp = malloc(sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_ARM + 1));
 	if(!cp)
 		panic_cpu("could not allocate new codepage!\n");
 
 	// load and fill in the default codepage
 	cp->address = cp_addr;
-	if(!thumb) { // ARM
-		cp->thumb = FALSE;
-		cp->pc_inc = 4;
-		cp->pc_shift = 2;
-		for(i=0; i < NUM_CODEPAGE_INS_ARM; i++) {
-			cp->ops[i].opcode = DECODE_ME_ARM;
-			cp->ops[i].cond = COND_AL;
-			cp->ops[i].flags = 0;
-			if(mmu_read_instruction_word(cp_addr + i*4, &cp->ops[i].undecoded.raw_instruction, priviledged)) {
-				UOP_TRACE(4, "load_codepage: mmu translation made arm codepage load fail\n");
-				free(cp);
-				return TRUE;
-			}
+	cp->thumb = FALSE;
+	cp->pc_inc = 4;
+	cp->pc_shift = 2;
+	for(i=0; i < NUM_CODEPAGE_INS_ARM; i++) {
+		cp->ops[i].opcode = DECODE_ME_ARM;
+		cp->ops[i].cond = COND_AL;
+		cp->ops[i].flags = 0;
+		if(mmu_read_instruction_word(cp_addr + i*4, &cp->ops[i].undecoded.raw_instruction, priviledged)) {
+			UOP_TRACE(4, "load_codepage: mmu translation made arm codepage load fail\n");
+			free(cp);
+			return TRUE;
 		}
-		last_ins_index = NUM_CODEPAGE_INS_ARM;
-	} else { // THUMB
-		cp->thumb = TRUE;
-		cp->pc_inc = 2;
-		cp->pc_shift = 1;
-		for(i=0; i < NUM_CODEPAGE_INS_THUMB; i++) {
-			halfword hword;
-		
-			cp->ops[i].opcode = DECODE_ME_THUMB;
-			cp->ops[i].cond = COND_AL;
-			cp->ops[i].flags = 0;
-			if(mmu_read_instruction_halfword(cp_addr + i*2, &hword, priviledged)) {
-				UOP_TRACE(4, "load_codepage: mmu translation made thumb codepage load fail\n");
-				free(cp);
-				return TRUE;
-			}
-			cp->ops[i].undecoded.raw_instruction = hword;
-		}
-		last_ins_index = NUM_CODEPAGE_INS_THUMB;
 	}
+	*last_ins_index = NUM_CODEPAGE_INS_ARM;
+
+	*_cp = cp;
+
+	return FALSE;
+}
+
+static bool load_codepage_thumb(armaddr_t pc, armaddr_t cp_addr, bool priviledged, struct uop_codepage **_cp, int *last_ins_index)
+{
+	struct uop_codepage *cp;	
+	int i;
+
+	cp = malloc(sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_THUMB + 1));
+	if(!cp)
+		panic_cpu("could not allocate new codepage!\n");
+
+	// load and fill in the default codepage
+	cp->address = cp_addr;
+	cp->thumb = TRUE;
+	cp->pc_inc = 2;
+	cp->pc_shift = 1;
+	for(i=0; i < NUM_CODEPAGE_INS_THUMB; i++) {
+		halfword hword;
+		
+		cp->ops[i].opcode = DECODE_ME_THUMB;
+		cp->ops[i].cond = COND_AL;
+		cp->ops[i].flags = 0;
+		if(mmu_read_instruction_halfword(cp_addr + i*2, &hword, priviledged)) {
+			UOP_TRACE(4, "load_codepage: mmu translation made thumb codepage load fail\n");
+			free(cp);
+			return TRUE;
+		}
+		cp->ops[i].undecoded.raw_instruction = hword;
+	}
+	*last_ins_index = NUM_CODEPAGE_INS_THUMB;
+
+	*_cp = cp;
+
+	return FALSE;
+}
+
+static bool load_codepage(armaddr_t pc, bool thumb, bool priviledged, struct uop_codepage **_cp)
+{
+	armaddr_t cp_addr = pc & ~(MMU_PAGESIZE-1);
+	struct uop_codepage *cp;	
+	unsigned int hash;
+	int last_ins_index;
+	bool ret;
+
+	UOP_TRACE(4, "load_codepage: pc 0x%x\n", pc);
+
+	// load and fill in the appropriate codepage
+	if(thumb)
+		ret =load_codepage_thumb(pc, cp_addr, priviledged, &cp, &last_ins_index);
+	else
+		ret = load_codepage_arm(pc, cp_addr, priviledged, &cp, &last_ins_index);
+	if(ret)
+		return TRUE; // there was some sort of error loading the new codepage
 
 	// fill in the last instruction to branch to next codepage
 	cp->ops[last_ins_index].opcode = B_IMMEDIATE;
@@ -342,8 +372,7 @@ static bool set_codepage(armaddr_t pc)
 	}
 
 	ASSERT(cpu.curr_cp != NULL);
-	cpu.cp_pc = &cpu.curr_cp->ops[(cpu.pc % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
-
+	cpu.cp_pc = PC_TO_CPPC(cpu.pc);
 	return FALSE;
 }
 
@@ -393,7 +422,7 @@ static inline __ALWAYS_INLINE void uop_b_immediate(struct uop *op)
 	if(likely(op->b_immediate.target_cp != NULL)) {
 		// we have already cached a pointer to the target codepage, use it
 		cpu.curr_cp = op->b_immediate.target_cp;
-		cpu.cp_pc = &cpu.curr_cp->ops[(cpu.pc % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];				
+		cpu.cp_pc = PC_TO_CPPC(cpu.pc);
 	} else {
 		// see if we can lookup the target codepage and try again
 		struct uop_codepage *cp = lookup_codepage(cpu.pc, get_condition(PSR_THUMB) ? TRUE : FALSE);
@@ -401,7 +430,7 @@ static inline __ALWAYS_INLINE void uop_b_immediate(struct uop *op)
 			// found one, cache it and set the code page
 			op->b_immediate.target_cp = cp;
 			cpu.curr_cp = cp;
-			cpu.cp_pc = &cpu.curr_cp->ops[(cpu.pc % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];				
+			cpu.cp_pc = PC_TO_CPPC(cpu.pc);
 		} else {
 			// didn't find one, force a codepage reload next instruction
 			cpu.curr_cp = NULL;
@@ -427,8 +456,7 @@ static inline __ALWAYS_INLINE void uop_b_immediate_local(struct uop *op)
 
 	cpu.pc = op->b_immediate.target;
 	ASSERT(cpu.curr_cp != NULL);
-	cpu.cp_pc = &cpu.curr_cp->ops[(cpu.pc % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
-
+	cpu.cp_pc = PC_TO_CPPC(cpu.pc);
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_BRANCH);
 #endif
@@ -455,13 +483,13 @@ static inline __ALWAYS_INLINE void uop_b_reg(struct uop *op)
 	if((temp_addr >> MMU_PAGESIZE_SHIFT) == (cpu.pc >> MMU_PAGESIZE_SHIFT)) {
 		// it's a local branch, just recalc the position in the current codepage
 		cpu.pc = temp_addr & 0xfffffffe;
-		cpu.cp_pc = &cpu.curr_cp->ops[(cpu.pc % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
+		cpu.cp_pc = PC_TO_CPPC(cpu.pc);
 	} else {
 		// it's a remote branch
 		cpu.pc = temp_addr & 0xfffffffe;
 		cpu.curr_cp = NULL;
 	}
-	
+
 	if(op->flags & UOPBFLAGS_SETTHUMB_ALWAYS) {
 		set_condition(PSR_THUMB, TRUE);
 		// force a codepage reload
@@ -472,7 +500,7 @@ static inline __ALWAYS_INLINE void uop_b_reg(struct uop *op)
 		// force a codepage reload
 		cpu.curr_cp = NULL;
 	}
-	
+
 	// if the bottom bit of the target address is 1, switch to thumb, otherwise switch to arm
 	if(op->flags & UOPBFLAGS_SETTHUMB_COND) {
 		bool old_condition = get_condition(PSR_THUMB) ? TRUE : FALSE;
@@ -485,6 +513,7 @@ static inline __ALWAYS_INLINE void uop_b_reg(struct uop *op)
 			UOP_TRACE(7, "B_REG: setting thumb to %d (new mode)\n", new_condition);
 		}
 	}
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_BRANCH);
 #endif
@@ -512,7 +541,7 @@ static inline __ALWAYS_INLINE void uop_b_reg_offset(struct uop *op)
 	if((temp_addr >> MMU_PAGESIZE_SHIFT) == (cpu.pc >> MMU_PAGESIZE_SHIFT)) {
 		// it's a local branch, just recalc the position in the current codepage
 		cpu.pc = temp_addr & 0xfffffffe;
-		cpu.cp_pc = &cpu.curr_cp->ops[(cpu.pc % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
+		cpu.cp_pc = PC_TO_CPPC(cpu.pc);
 	} else {
 		// it's a remote branch
 		cpu.pc = temp_addr & 0xfffffffe;
@@ -542,6 +571,7 @@ static inline __ALWAYS_INLINE void uop_b_reg_offset(struct uop *op)
 			UOP_TRACE(7, "B_REG: setting thumb to %d (new mode)\n", new_condition);
 		}
 	}
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_BRANCH);
 #endif
@@ -2227,6 +2257,8 @@ static inline __ALWAYS_INLINE void uop_move_from_sr(struct uop *op)
 static inline __ALWAYS_INLINE void uop_undefined(struct uop *op) 
 {
 	atomic_or(&cpu.pending_exceptions, EX_UNDEFINED);
+	
+//	UOP_TRACE(0, "undefined instruction at 0x%x\n", get_reg(PC));
 
 #if COUNT_CYCLES
 	if(get_core() == ARM7)
@@ -2336,7 +2368,6 @@ int uop_dispatch_loop(void)
 	/* main dispatch loop */
 	for(;;) {
 		struct uop *op;
-		int pc_inc;
 
 		UOP_TRACE(10, "uop_dispatch_loop: start of new cycle\n");
 
@@ -2348,7 +2379,7 @@ int uop_dispatch_loop(void)
 
 			if(cpu.curr_cp) {
 				if((cpu.pc >> MMU_PAGESIZE_SHIFT) == (cpu.r[PC] >> MMU_PAGESIZE_SHIFT)) {
-					cpu.cp_pc = &cpu.curr_cp->ops[(cpu.r[PC] % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
+					cpu.cp_pc = PC_TO_CPPC(cpu.r[PC]);
 				} else {
 					cpu.curr_cp = NULL; // will load a new codepage in a few lines
 				}
@@ -2389,12 +2420,14 @@ int uop_dispatch_loop(void)
 #endif
 
 		/* increment the program counter */
-		pc_inc = cpu.curr_cp->pc_inc;
+		int pc_inc = cpu.curr_cp->pc_inc;
 		cpu.pc += pc_inc; // next pc
 		cpu.r[PC] = cpu.pc + pc_inc; // during the course of the instruction, r15 looks like it's +8 or +4 (arm vs thumb)
 		cpu.cp_pc++;
 
-		if(TRACE_CPU_LEVEL >= 10 && op->opcode != DECODE_ME_ARM && op->opcode != DECODE_ME_THUMB)
+		if(TRACE_CPU_LEVEL >= 10 
+		   && op->opcode != DECODE_ME_ARM 
+		   && op->opcode != DECODE_ME_THUMB)
 			dump_cpu();
 
 		/* check to see if we should execute it */
