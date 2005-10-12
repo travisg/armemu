@@ -30,22 +30,22 @@
 const char *dp_op_to_str(int op)
 {
 	switch(op) {
-		case 0x0: return "AND";
-		case 0x1: return "EOR";
-		case 0x2: return "SUB";
-		case 0x3: return "RSB";
-		case 0x4: return "ADD";
-		case 0x5: return "ADC";
-		case 0x6: return "SBC";
-		case 0x7: return "RSC";
-		case 0x8: return "TST";
-		case 0x9: return "TEQ";
-		case 0xa: return "CMP";
-		case 0xb: return "CMN";
-		case 0xc: return "ORR";
-		case 0xd: return "MOV";
-		case 0xe: return "BIC";
-		case 0xf: return "MVN";
+		case AOP_AND: return "AND";
+		case AOP_EOR: return "EOR";
+		case AOP_SUB: return "SUB";
+		case AOP_RSB: return "RSB";
+		case AOP_ADD: return "ADD";
+		case AOP_ADC: return "ADC";
+		case AOP_SBC: return "SBC";
+		case AOP_RSC: return "RSC";
+		case AOP_TST: return "TST";
+		case AOP_TEQ: return "TEQ";
+		case AOP_CMP: return "CMP";
+		case AOP_CMN: return "CMN";
+		case AOP_ORR: return "ORR";
+		case AOP_MOV: return "MOV";
+		case AOP_BIC: return "BIC";
+		case AOP_MVN: return "MVN";
 		default: return "UNK";
 	}
 }
@@ -67,6 +67,12 @@ void op_branch(struct uop *op)
 	offset *= 4;
 
 	if(exchange) {
+		if(get_isa() < ARM_V5) {
+			// blx is invalid on ARMv4
+			op_undefined(op);
+			return;
+		}
+
 		// this is actually blx. reinterpret the L bit to mean H
 		offset |= (L) ? 0x2 : 0;
 		L = 1; // force a link
@@ -104,15 +110,20 @@ void op_bx(struct uop *op)
 	word ins = op->undecoded.raw_instruction;
 	int Rm;
 	
-	// this is going to translate to branch regisrer
-	op->opcode = B_REG;
-	op->cond = (ins >> COND_SHIFT) & COND_MASK;
-	op->flags |= UOPBFLAGS_SETTHUMB_COND;
-
 	// decode the instruction
 	Rm = BITS(ins, 3, 0);
 #define	L BIT(ins, 5) /* for blx */
 
+	if(L && get_isa() < ARM_V5) {
+		// BLX is undefined on ARMv4
+		op_undefined(op);
+		return;
+	}
+
+	// this is going to translate to branch register
+	op->opcode = B_REG;
+	op->cond = (ins >> COND_SHIFT) & COND_MASK;
+	op->flags |= UOPBFLAGS_SETTHUMB_COND;
 	op->b_reg.reg = Rm;
 	op->b_reg.link_offset = -4;
 
@@ -205,12 +216,20 @@ void op_mrs(struct uop *op)
 void op_clz(struct uop *op)
 {
 	panic_cpu("op_clz: unimplemented decode!\n");
+
+	// ARMv5 and above
 }
 
 void op_pld(struct uop *op)
 {
 	word ins = op->undecoded.raw_instruction;
 	int Rd;
+
+	// only supported on ARMv5e
+	if(get_isa() < ARM_V5e) {
+		op_undefined(op);
+		return;
+	}
 
 	Rd = BITS_SHIFT(ins, 19, 16);
 
@@ -223,6 +242,12 @@ void op_pld(struct uop *op)
 void op_bkpt(struct uop *op)
 {
 	word ins = op->undecoded.raw_instruction;
+
+	// only supported on ARMv5+
+	if(get_isa() < ARM_V5) {
+		op_undefined(op);
+		return;
+	}
 
 	op->opcode = BKPT;
 	op->cond = COND_AL;
@@ -246,6 +271,8 @@ void op_undefined(struct uop *op)
 
 	op->opcode = UNDEFINED;
 	op->cond = (ins >> COND_SHIFT) & COND_MASK;
+	if (op->cond == COND_SPECIAL)
+		op->cond = COND_AL;
 
 	CPU_TRACE(5, "undefined arm instruction 0x%x\n", ins);
 }
@@ -268,7 +295,13 @@ void op_coproc_double_reg_transfer(struct uop *op)
 	word ins = op->undecoded.raw_instruction;
 	int cp_num = BITS_SHIFT(ins, 11, 8);
 
-	op->opcode = COPROC_REG_TRANSFER;
+	// only supported on ARMv5+
+	if(get_isa() < ARM_V5) {
+		op_undefined(op);
+		return;
+	}
+
+	op->opcode = COPROC_DOUBLE_REG_TRANSFER;
 	op->cond = (ins >> COND_SHIFT) & COND_MASK;
 	op->coproc.raw_instruction = ins;
 	op->coproc.cp_num = cp_num;
@@ -281,7 +314,7 @@ void op_coproc_data_processing(struct uop *op)
 	word ins = op->undecoded.raw_instruction;
 	int cp_num = BITS_SHIFT(ins, 11, 8);
 
-	op->opcode = COPROC_REG_TRANSFER;
+	op->opcode = COPROC_DATA_PROCESSING;
 	op->cond = (ins >> COND_SHIFT) & COND_MASK;
 	op->coproc.raw_instruction = ins;
 	op->coproc.cp_num = cp_num;
@@ -294,7 +327,7 @@ void op_coproc_load_store(struct uop *op)
 	word ins = op->undecoded.raw_instruction;
 	int cp_num = BITS_SHIFT(ins, 11, 8);
 
-	op->opcode = COPROC_REG_TRANSFER;
+	op->opcode = COPROC_LOAD_STORE;
 	op->cond = (ins >> COND_SHIFT) & COND_MASK;
 	op->coproc.raw_instruction = ins;
 	op->coproc.cp_num = cp_num;
@@ -811,6 +844,9 @@ void op_load_store_two_word(struct uop *op)
 {
 	word ins = op->undecoded.raw_instruction;
 	panic_cpu("op_load_store_two_word unimplemented decode!\n");
+
+	// ARMv5e instruction only
+
 	int Rn, Rd;
 	int Rnval;
 	armaddr_t addr;

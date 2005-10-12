@@ -164,11 +164,11 @@ extern struct cpu_struct cpu;
 #define PSR_FIQ_MASK  0x40
 #define PSR_THUMB     0x20
 
-#define PSR_CC_MASK   0xf0000000
 #define PSR_CC_NEG    0x80000000
 #define PSR_CC_ZERO   0x40000000
 #define PSR_CC_CARRY  0x20000000
 #define PSR_CC_OVL    0x10000000
+#define PSR_CC_Q      0x08000000
 
 // conditions
 #define COND_MASK     0xf

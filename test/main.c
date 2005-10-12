@@ -31,7 +31,7 @@ int main(void)
 
 	puts("console initialized\n");
 
-//	read_cpu_id();
+	read_cpu_id();
 
 	mmu_init();
 	
