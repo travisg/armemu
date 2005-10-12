@@ -23,7 +23,7 @@ endif
 
 # Darwin (Mac OS X) too
 ifeq ($(UNAME),Darwin)
-CFLAGS += -DASM_LEADING_UNDERSCORES=1 -mdynamic-no-pic
+CFLAGS += -DASM_LEADING_UNDERSCORES=1 -mdynamic-no-pic -fast
 LDLIBS += -framework Cocoa -L/sw/lib -lSDLmain -lstdc++
 endif
 

@@ -976,10 +976,11 @@ void op_load_store_multiple(struct uop *op)
 		writeback_offset = reg_count * 4;
 	} else {
 		// downwards
-		base_offset = -(reg_count * 4);
-		if(!P)
-			base_offset += 4; // base address not included
-		writeback_offset = base_offset;
+		if(P)
+			base_offset = -(reg_count * 4); // base address not included
+		else
+			base_offset = -(reg_count * 4) + 4;
+		writeback_offset = -(reg_count * 4);
 	}
 
 	// start filling out the translated instruction

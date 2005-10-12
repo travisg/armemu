@@ -963,7 +963,7 @@ static inline __ALWAYS_INLINE void uop_load_multiple(struct uop *op)
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
 	// scan through the list of registers, reading in each one
-	for(i = 0; i < 16; i++) {
+	for(i = 0; i <= 15; i++) {
 		if(reg_list & 1) {
 			if(mmu_read_mem_word(temp_addr2, &temp_word)) {
 				// there was a data abort, and we may have trashed the base register. Restore it.
@@ -1021,7 +1021,7 @@ static inline __ALWAYS_INLINE void uop_load_multiple_s(struct uop *op)
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
 	// load r0-r12, and r13/r14 from usr mode (no r15, would have resulted in a different instruction)
-	for(i = 0; i < 13; i++) {
+	for(i = 0; i <= 12; i++) {
 		if(reg_list & 1) {
 			if(mmu_read_mem_word(temp_addr2, &temp_word)) {
 				// there was a data abort, and we may have trashed the base register. Restore it.
@@ -1033,7 +1033,7 @@ static inline __ALWAYS_INLINE void uop_load_multiple_s(struct uop *op)
 		}
 		reg_list >>= 1;
 	}
-	for(i = 13; i < 14; i++) {
+	for(i = 13; i <= 14; i++) {
 		if(reg_list & 1) {
 			if(mmu_read_mem_word(temp_addr2, &temp_word)) {
 				// there was a data abort, and we may have trashed the base register. Restore it.
@@ -1086,7 +1086,7 @@ static inline __ALWAYS_INLINE void uop_store_multiple(struct uop *op)
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
 	// scan through the list of registers, storing each one
-	for(i = 0; i < 16; i++) {		
+	for(i = 0; i <= 15; i++) {		
 		if(reg_list & 1) {
 			if(mmu_write_mem_word(temp_addr2, get_reg(i)))
 				return; // data abort
@@ -1126,7 +1126,7 @@ static inline __ALWAYS_INLINE void uop_store_multiple_s(struct uop *op)
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
 	// deal with 
-	for(i = 0; i < 13; i++) {		
+	for(i = 0; i <= 12; i++) {		
 		if(reg_list & 1) {
 			if(mmu_write_mem_word(temp_addr2, get_reg(i)))
 				return; // data abort
@@ -1134,7 +1134,7 @@ static inline __ALWAYS_INLINE void uop_store_multiple_s(struct uop *op)
 		}
 		reg_list >>= 1;
 	}		
-	for(i = 13; i < 16; i++) {
+	for(i = 13; i <= 15; i++) {
 		if(reg_list & 1) {
 			if(i == 13)
 				temp_word = cpu.usr_regs[0];
