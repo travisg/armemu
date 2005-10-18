@@ -34,6 +34,7 @@ typedef word armaddr_t;
 
 // used in ASSERT() so declared up front
 void panic_cpu(const char *fmt, ...);
+void shutdown_cpu(void);
 
 enum arm_instruction_set {
 	ARM_V4 = 0,
@@ -388,6 +389,7 @@ int initialize_cpu(const char *cpu_type);
 void reset_cpu(void);
 int start_cpu(void);
 void dump_cpu(void);
+void dump_registers(void);
 int build_condition_table(void);
 void install_coprocessor(int cp_num, struct arm_coprocessor *coproc);
 

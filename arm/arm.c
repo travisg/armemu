@@ -172,7 +172,7 @@ int start_cpu(void)
 	SDL_CreateThread(&cpu_startup_thread_entry, NULL);
 
 	// add a function that goes off once a second
-	SDL_AddTimer(1000, &speedtimer, NULL);
+//	SDL_AddTimer(1000, &speedtimer, NULL);
 
 	return 0;
 }
@@ -566,6 +566,36 @@ void dump_cpu(void)
 		cpu.spsr);
 }
 
+void dump_registers(void)
+{
+
+    printf("%08x %08x %08x %08x %08x %08x %08x %08x %c%c%c%c\n",
+           cpu.r[0], cpu.r[1], cpu.r[2], cpu.r[3],
+           cpu.r[4], cpu.r[5], cpu.r[6], cpu.r[7],
+           get_condition(PSR_CC_NEG) ? 'N':'-',
+           get_condition(PSR_CC_ZERO) ? 'Z':'-',
+           get_condition(PSR_CC_CARRY) ? 'C':'-',
+           get_condition(PSR_CC_OVL) ? 'O':'-'
+           );
+    printf("%08x %08x %08x %08x %08x %08x %08x %08x\n",
+           cpu.r[8], cpu.r[9], cpu.r[10], cpu.r[11],
+           cpu.r[12], cpu.r[13], cpu.r[14], cpu.pc);
+    
+
+}
+
+void shutdown_cpu(void)
+{
+	// push a quit message to the SDL event loop
+	SDL_Event event;
+	event.type = SDL_QUIT;
+	SDL_PushEvent(&event);
+
+	sleep(10);
+
+	exit(1);
+}
+
 void panic_cpu(const char *fmt, ...)
 {
 	va_list ap;	
@@ -580,13 +610,6 @@ void panic_cpu(const char *fmt, ...)
 
 	dump_sys();
 
-	// push a quit message to the SDL event loop
-	SDL_Event event;
-	event.type = SDL_QUIT;
-	SDL_PushEvent(&event);
-
-	sleep(10);
-
-	exit(1);
+    shutdown_cpu();
 }
 
