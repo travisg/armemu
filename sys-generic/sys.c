@@ -51,6 +51,14 @@ struct sys {
 // function decls
 static word unhandled_get_put(armaddr_t address, word data, int size, int put);
 
+static int has_feature(const char *name, int def)
+{
+    const char *tmp = get_config_key_string("system", name, def ? "yes" : "no");
+    if(!strcasecmp(tmp,"yes")) return 1;
+    if(atoi(tmp) != 0) return 1;
+    return 0;
+}
+    
 int initialize_system(void)
 {
 	unsigned int i;
@@ -70,12 +78,18 @@ int initialize_system(void)
 	// initialize the main memory
 	initialize_mainmem(get_config_key_string("rom", "file", NULL));
 
-	// initialize the display
-	initialize_display();
+    if(has_feature("display", 1)){
+            // initialize the display
+        initialize_display();
+    }
 
-	// initialize the console (keyboard)
-	initialize_console();
+    if(has_feature("console", 1)){
+            // initialize the console (keyboard)
+        initialize_console();
+    }
 
+    initialize_debug();
+    
 	return 0;
 }
 

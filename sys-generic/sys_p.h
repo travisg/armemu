@@ -43,6 +43,9 @@ int initialize_console(void);
 void console_keydown(SDLKey key);
 void console_keyup(SDLKey key);
 
+// debug  
+int initialize_debug(void);
+
 // memory map
 #include "memmap.h"
 
