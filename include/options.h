@@ -39,7 +39,7 @@
 #define __ALWAYS_INLINE __attribute__((always_inline))
 
 // systemwide asserts
-#if 0
+#if 1
 #define ASSERT(x) \
 	if(unlikely(!(x))) panic_cpu("assert failed at %s:%d\n", __FUNCTION__, __LINE__);
 #else

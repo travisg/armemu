@@ -56,13 +56,11 @@
 /* debug interface */
 #define DEBUG_REGS_BASE (PIC_REGS_BASE + PIC_REGS_SIZE)
 #define DEBUG_REGS_SIZE (4*1024*1024)
-
-/* writes to this register are sent through to stdout */
-#define DEBUG_STDOUT (SERIAL_REGS_BASE + 0)
-
-/* reads from this register return the contents of stdin
-   or -1 if no data is pending */
-#define DEBUG_STDIN  (SERIAL_REGS_BASE + 0)
+#define DEBUG_STDOUT (DEBUG_REGS_BASE + 0) /* writes to this register are sent through to stdout */
+#define DEBUG_STDIN  (DEBUG_REGS_BASE + 0) /* reads from this register return the contents of stdin
+                                            * or -1 if no data is pending */
+#define DEBUG_REGDUMP (DEBUG_REGS_BASE + 4) /* writes to this register cause the emulator to dump registers */
+#define DEBUG_HALT    (DEBUG_REGS_BASE + 8) /* writes to this register will halt the emulator */
 
 	/* mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
 #define PIC_MASK          (PIC_REGS_BASE + 0)

@@ -48,6 +48,8 @@ int main(void)
 		if(read_keyboard(&key) >= 0)
 			if((key & KEY_MOD_UP) == 0)
 				putchar(key);
+		*(unsigned int *)DEBUG_STDOUT = 'a';
+
 //		puts("abc ");
 //		draw_char('a', 0, 0);
 //		draw_char('b', 6, 0);

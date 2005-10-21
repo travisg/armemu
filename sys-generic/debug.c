@@ -23,6 +23,9 @@ static word debug_get_put(armaddr_t address, word data, int size, int put)
         case 4:
             dump_registers();
             return 0;
+		case 8:
+			panic_cpu("debug halt\n");
+			return 0;
         default:
             return 0;
         }
@@ -39,7 +42,6 @@ static word debug_get_put(armaddr_t address, word data, int size, int put)
         }
     }
 }
-
 
 int initialize_debug(void)
 {

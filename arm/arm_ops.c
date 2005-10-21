@@ -550,12 +550,37 @@ void op_mul(struct uop *op)
 void op_mull(struct uop *op)
 {
 	word ins = op->undecoded.raw_instruction;
-	panic_cpu("mull unimplemented\n");
+	int RdHi, RdLo, Rs, Rm;
 
-	// XXX cycle count. Should be very similar to above + 1 cycle
-#if COUNT_ARM_OPS
-	inc_perf_counter(OP_MUL);
-#endif
+	// decode the instruction
+	Rm = BITS(ins, 3, 0);
+	Rs = BITS_SHIFT(ins, 11, 8);
+	RdLo = BITS_SHIFT(ins, 15, 12);
+	RdHi = BITS_SHIFT(ins, 19, 16);
+#define S BIT(ins, 20)
+#define A BIT(ins, 21)
+#define U BIT(ins, 22)
+
+	CPU_TRACE(5, "\t\tmull: A %d, U %d, S %d, RdHi %d, RdLo %d, Rs %d, Rm %d\n",
+			  A?1:0, U?1:0, S?1:0, RdHi, RdLo, Rs, Rm);
+
+	// translate the instruction
+	op->opcode = MULTIPLY_LONG;
+	op->cond = (ins >> COND_SHIFT) & COND_MASK;
+	op->mull.destlo_reg = RdLo;
+	op->mull.desthi_reg = RdHi;
+	op->mull.source_reg = Rm;
+	op->mull.source2_reg = Rs;
+	if(S)
+		op->flags |= UOPMULFLAGS_S_BIT;
+	if(A)
+		op->flags |= UOPMULFLAGS_ACCUMULATE;
+	if(U) // signed bit, confusingly named U
+		op->flags |= UOPMULFLAGS_SIGNED;
+
+#undef U
+#undef A
+#undef S
 }
 
 void op_swap(struct uop *op)

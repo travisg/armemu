@@ -85,6 +85,7 @@ enum uop_opcode {
 
 	// multiply variants
 	MULTIPLY,
+	MULTIPLY_LONG,
 
 	// move from/to status register
 	MOVE_TO_SR_IMM,
@@ -222,12 +223,19 @@ struct uop {
 		// multiply
 #define UOPMULFLAGS_S_BIT					0x1 // set NZ condition
 #define UOPMULFLAGS_ACCUMULATE				0x2 // add the contents of the accum reg to the product
+#define UOPMULFLAGS_SIGNED                  0x4 // signed long multiply (only defined on long multiples)
 		struct {
 			byte dest_reg;
 			byte source_reg;
 			byte source2_reg;
 			byte accum_reg;
 		} mul;
+		struct {
+			byte destlo_reg;
+			byte desthi_reg;
+			byte source_reg;
+			byte source2_reg;
+		} mull;
 
 		// move from/to status register
 #define UOPMSR_R_BIT						0x1 // access to spsr instead of cpsr
