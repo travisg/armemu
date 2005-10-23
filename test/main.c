@@ -20,6 +20,7 @@ void cpufunc(void)
 int main(void)
 {
 	int i;
+	char c;
 	
 	cpufunc();
 
@@ -39,16 +40,23 @@ int main(void)
 	arm_enable_ints();
 
 	puts("keyboard test:\n");
+	c = 'a';
 	for(;;) {
 		unsigned int key;
 
 		/* do some cpu intensive stuff for a bit */
 		cpufunc();
 
+		/* send a repeating char pattern to stdout */
+		c++;
+		if(c > 'z')
+			c = 'a';
+		*(unsigned int *)DEBUG_STDOUT = c;
+
+		/* see if a keyboard interrupt went off */
 		if(read_keyboard(&key) >= 0)
 			if((key & KEY_MOD_UP) == 0)
 				putchar(key);
-		*(unsigned int *)DEBUG_STDOUT = 'a';
 
 //		puts("abc ");
 //		draw_char('a', 0, 0);

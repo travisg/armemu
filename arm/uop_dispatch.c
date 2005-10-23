@@ -964,7 +964,8 @@ static inline __ALWAYS_INLINE void uop_load_multiple(struct uop *op)
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
 	// scan through the list of registers, reading in each one
-	for(i = 0; i <= 15; i++) {
+	ASSERT((reg_list >> 16) == 0);
+	for(i = 0; reg_list != 0; i++, reg_list >>= 1) {
 		if(reg_list & 1) {
 			if(mmu_read_mem_word(temp_addr2, &temp_word)) {
 				// there was a data abort, and we may have trashed the base register. Restore it.
@@ -974,7 +975,6 @@ static inline __ALWAYS_INLINE void uop_load_multiple(struct uop *op)
 			put_reg(i, temp_word);
 			temp_addr2 += 4;
 		}
-		reg_list >>= 1;
 	}
 
 	// see if we need to move spsr into cpsr
@@ -1021,36 +1021,25 @@ static inline __ALWAYS_INLINE void uop_load_multiple_s(struct uop *op)
 	temp_addr = get_reg(op->load_store_multiple.base_reg);
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
-	// load r0-r12, and r13/r14 from usr mode (no r15, would have resulted in a different instruction)
-	for(i = 0; i <= 12; i++) {
+	// r15 cannot be in the register list, would have resulted in a different instruction
+	ASSERT((reg_list & 0x8000) == 0);
+
+	// scan through the list of registers, reading in each one
+	ASSERT((reg_list >> 16) == 0);
+	for(i = 0; reg_list != 0; i++, reg_list >>= 1) {
 		if(reg_list & 1) {
 			if(mmu_read_mem_word(temp_addr2, &temp_word)) {
 				// there was a data abort, and we may have trashed the base register. Restore it.
-				put_reg(op->load_store_multiple.base_reg, temp_addr);
+				put_reg_user(op->load_store_multiple.base_reg, temp_addr);
 				return;
 			}
-			put_reg(i, temp_word);
+			put_reg_user(i, temp_word);
 			temp_addr2 += 4;
 		}
-		reg_list >>= 1;
 	}
-	for(i = 13; i <= 14; i++) {
-		if(reg_list & 1) {
-			if(mmu_read_mem_word(temp_addr2, &temp_word)) {
-				// there was a data abort, and we may have trashed the base register. Restore it.
-				put_reg(op->load_store_multiple.base_reg, temp_addr);
-				return;
-			}
-			if(i == 13)
-				cpu.usr_regs[0] = temp_word;
-			else // i == 14
-				cpu.usr_regs[1] = temp_word;
-			temp_addr2 += 4;
-		}
-		reg_list >>= 1;
-	}	
 
 	// writeback
+	// NOTE: writeback with the S bit set is unpredictable
 	if(op->flags & UOPLSMFLAGS_WRITEBACK) {
 		temp_addr2 = temp_addr + op->load_store_multiple.writeback_offset;
 		put_reg(op->load_store_multiple.base_reg, temp_addr2);
@@ -1087,13 +1076,13 @@ static inline __ALWAYS_INLINE void uop_store_multiple(struct uop *op)
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
 	// scan through the list of registers, storing each one
-	for(i = 0; i <= 15; i++) {		
+	ASSERT((reg_list >> 16) == 0);
+	for(i = 0; reg_list != 0; i++, reg_list >>= 1) {
 		if(reg_list & 1) {
 			if(mmu_write_mem_word(temp_addr2, get_reg(i)))
 				return; // data abort
 			temp_addr2 += 4;
 		}
-		reg_list >>= 1;
 	}
 
 	// writeback
@@ -1118,7 +1107,6 @@ static inline __ALWAYS_INLINE void uop_store_multiple(struct uop *op)
 static inline __ALWAYS_INLINE void uop_store_multiple_s(struct uop *op)
 {
 	armaddr_t temp_addr, temp_addr2;
-	word temp_word;
 	int i;
 	word reg_list = op->load_store_multiple.reg_bitmap;
 
@@ -1126,31 +1114,18 @@ static inline __ALWAYS_INLINE void uop_store_multiple_s(struct uop *op)
 	temp_addr = get_reg(op->load_store_multiple.base_reg);
 	temp_addr2 = temp_addr + op->load_store_multiple.base_offset;
 
-	// deal with 
-	for(i = 0; i <= 12; i++) {		
+	// scan through the list of registers, storing each one
+	ASSERT((reg_list >> 16) == 0);
+	for(i = 0; reg_list != 0; i++, reg_list >>= 1) {
 		if(reg_list & 1) {
-			if(mmu_write_mem_word(temp_addr2, get_reg(i)))
+			if(mmu_write_mem_word(temp_addr2, get_reg_user(i)))
 				return; // data abort
 			temp_addr2 += 4;
 		}
-		reg_list >>= 1;
-	}		
-	for(i = 13; i <= 15; i++) {
-		if(reg_list & 1) {
-			if(i == 13)
-				temp_word = cpu.usr_regs[0];
-			else if(i == 14)
-				temp_word = cpu.usr_regs[1];
-			else 
-				temp_word = get_reg(i);
-			if(mmu_write_mem_word(temp_addr2, temp_word))
-				return; // data abort
-			temp_addr2 += 4;
-		}
-		reg_list >>= 1;
-	}		
+	}
 
 	// writeback
+	// NOTE: writeback with the S bit set is unpredictable
 	if(op->flags & UOPLSMFLAGS_WRITEBACK) {
 		temp_addr2 = temp_addr + op->load_store_multiple.writeback_offset;
 		put_reg(op->load_store_multiple.base_reg, temp_addr2);

@@ -136,12 +136,13 @@ struct cpu_struct {
 	struct arm_coprocessor coproc[16];
 
 	// banked_regs
-	reg_t usr_regs[2]; // sp, lr
-	reg_t irq_regs[3]; // sp, lr, spsr
-	reg_t svc_regs[3]; //     "
-	reg_t abt_regs[3]; //     "
-	reg_t und_regs[3]; //     "
-	reg_t fiq_regs[8]; // r8-r12, sp, lr, spsr
+	reg_t usr_regs_low[5]; // non-fiq r8-r12
+	reg_t usr_regs[2];     // sp, lr
+	reg_t irq_regs[3];     // sp, lr, spsr
+	reg_t svc_regs[3];     //     "
+	reg_t abt_regs[3];     //     "
+	reg_t und_regs[3];     //     "
+	reg_t fiq_regs[8];     // r8-r12, sp, lr, spsr
 };
 
 extern struct cpu_struct cpu;
@@ -248,6 +249,8 @@ enum {
 /* ARM routines */
 reg_t get_reg(int num);
 void put_reg(int num, reg_t data);
+reg_t get_reg_user(int num);            /* "user" mode reg access */
+void put_reg_user(int num, reg_t data); /* same */
 void set_cpu_mode(int mode);
 word do_add(word a, word b, int carry_in, int *carry, int *ovl);
 unsigned int get_condition(unsigned int condition);

@@ -200,6 +200,10 @@ void set_cpu_mode(int new_mode)
 			// fiq mode has a seperate bank for r8-r14, and spsr
 			memcpy(cpu.fiq_regs, &cpu.r[8], sizeof(reg_t) * 7); // r8-r14
 			cpu.fiq_regs[7] = cpu.spsr;
+
+			// we must be moving to a "user" mode so switch to the user r8-r12
+			memcpy(&cpu.r[8], cpu.usr_regs_low, sizeof(reg_t) * 5); // r8-r12
+
 			break;
 			
 		// the other 4 modes are similar, so select the bank and share the code
@@ -231,6 +235,9 @@ save_3reg:
 			break;
 
 		case PSR_MODE_fiq:
+			// we must be coming from one of the "user" modes, so save r8-r12
+			memcpy(cpu.usr_regs_low, &cpu.r[8], sizeof(reg_t) * 5); // r8-r12
+
 			// fiq mode has a seperate bank for r8-r14, and spsr
 			memcpy(&cpu.r[8], cpu.fiq_regs, sizeof(reg_t) * 7); // r8-r14
 			cpu.spsr = cpu.fiq_regs[7];
@@ -258,6 +265,39 @@ restore_3reg:
 	// set the mode bits
 	cpu.cpsr &= ~PSR_MODE_MASK;
 	cpu.cpsr |= new_mode;
+}
+
+/* access the "user" mode registers */
+/* NOTE: undefined if the cpu is in USR/SYS mode */
+reg_t get_reg_user(int num) 
+{
+	ASSERT(num >= 0 && num <= 15);
+
+	if (num == 13) {
+		return cpu.usr_regs[0];
+	} else if (num == 14) {
+		return cpu.usr_regs[1];
+	} else if (num >= 8 && num <= 12 && (cpu.cpsr & PSR_MODE_MASK) == PSR_MODE_fiq) { /* r8-r12 and the cpu is in FIQ */
+		return cpu.usr_regs_low[num - 8]; /* user regs are saved in this bank */
+	} else { /* all other regs access normally */
+		return get_reg(num);
+	}
+}
+
+/* same as get_reg_user */
+void put_reg_user(int num, reg_t data)
+{
+	ASSERT(num >= 0 && num <= 15);
+
+	if (num == 13) {
+		cpu.usr_regs[0] = data;
+	} else if (num == 14) {
+		cpu.usr_regs[1] = data;
+	} else if (num >= 8 && num <= 12 && (cpu.cpsr & PSR_MODE_MASK) == PSR_MODE_fiq) { /* r8-r12 and the cpu is in FIQ */
+		cpu.usr_regs_low[num - 8] = data; /* user regs are saved in this bank */
+	} else { /* all other regs access normally */
+		put_reg(num, data);
+	}
 }
 
 void raise_irq(void)
