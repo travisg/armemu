@@ -68,7 +68,14 @@
 #define DEBUG_MEMDUMP_HALFWORD (DEBUG_REGS_BASE + 24) /* trigger a memory dump in halfword format */
 #define DEBUG_MEMDUMP_WORD (DEBUG_REGS_BASE + 28)     /* trigger a memory dump in word format */
 
-	/* mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
+/* lets you set the trace level of the various subsystems from within the emulator */
+/* only works on emulator builds that support dynamic trace levels */
+#define DEBUG_SET_TRACELEVEL_CPU (DEBUG_REGS_BASE + 32)
+#define DEBUG_SET_TRACELEVEL_UOP (DEBUG_REGS_BASE + 36)
+#define DEBUG_SET_TRACELEVEL_SYS (DEBUG_REGS_BASE + 40)
+#define DEBUG_SET_TRACELEVEL_MMU (DEBUG_REGS_BASE + 44)
+
+	/* Mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
 #define PIC_MASK          (PIC_REGS_BASE + 0)
 	/* each bit corresponds to the current status of the interrupt line */
 #define PIC_STAT          (PIC_REGS_BASE + 4)

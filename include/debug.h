@@ -28,6 +28,13 @@
 
 void dprintf(const char *fmt, ...);
 
+#if DYNAMIC_TRACE_LEVELS
+extern int TRACE_CPU_LEVEL;
+extern int TRACE_UOP_LEVEL;
+extern int TRACE_SYS_LEVEL;
+extern int TRACE_MMU_LEVEL;
+#endif
+
 /* trace */
 #define CPU_TRACE(level, x...) { if((level) <= TRACE_CPU_LEVEL) dprintf(x); } while(0)
 #define UOP_TRACE(level, x...) { if((level) <= TRACE_UOP_LEVEL) dprintf(x); } while(0)

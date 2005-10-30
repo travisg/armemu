@@ -404,7 +404,7 @@ void op_data_processing(struct uop *op)
 					op->opcode = CMP_REG_S;
 					op->simple_dp_reg.source_reg = Rn;
 					op->simple_dp_reg.source2_reg = Rm;
-					CPU_TRACE(6, "\t\tCMP_REG_S: Rd %d Rm %d\n", Rd, Rm);
+					CPU_TRACE(6, "\t\tCMP_REG_S: Rn %d Rm %d\n", Rn, Rm);
 				} else if(!S && opcode == 0x4) { // add two regs and store in a third
 					op->opcode = ADD_REG;
 					op->simple_dp_reg.dest_reg = Rd;
@@ -506,7 +506,7 @@ void op_data_processing(struct uop *op)
 				op->simple_dp_imm.source_reg = Rn;
 				op->simple_dp_imm.immediate = -immed;
 
-				CPU_TRACE(6, "\t\tSUB_IMM: Rd %d Rn %d immed %d\n", Rd, Rn, -immed);
+				CPU_TRACE(6, "\t\tSUB_IMM: Rd %d Rn %d immed %d\n", Rd, Rn, immed);
 				break;
 			} else {
 				/* translates to more generic DATA_PROCESSING_IMM */

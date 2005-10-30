@@ -23,10 +23,19 @@
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
 
+#define DYNAMIC_TRACE_LEVELS 0 // lets you change the trace levels at-will, at the expense of some runtime speed
+
+#if DYNAMIC_TRACE_LEVELS
+#define DEFAULT_TRACE_CPU_LEVEL 1
+#define DEFAULT_TRACE_UOP_LEVEL 1
+#define DEFAULT_TRACE_SYS_LEVEL 1
+#define DEFAULT_TRACE_MMU_LEVEL 1
+#else
 #define TRACE_CPU_LEVEL 1
 #define TRACE_UOP_LEVEL 1
 #define TRACE_SYS_LEVEL 1
 #define TRACE_MMU_LEVEL 1
+#endif
 
 #define COUNT_CYCLES 	0 // should we try to accurately count cycles
 #define COUNT_ARM_OPS	0

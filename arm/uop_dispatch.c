@@ -114,13 +114,13 @@
 			result = a + b; \
 			break; \
 		case AOP_ADC: /* ADC */ \
-			result = a + b + get_condition(PSR_CC_CARRY) ? 1 : 0; \
+			result = get_condition(PSR_CC_CARRY) ? a + b + 1 : a + b; \
 			break; \
 		case AOP_SBC: /* SBC */ \
-			result = a - b + get_condition(PSR_CC_CARRY) ? -1 : 0; \
+			result = get_condition(PSR_CC_CARRY) ? a - b - 1 : a - b; \
 			break; \
 		case AOP_RSC: /* RSC */ \
-			result = b - a + get_condition(PSR_CC_CARRY) ? -1 : 0; \
+			result = get_condition(PSR_CC_CARRY) ? b - a - 1 : b - a; \
 			break; \
 		case AOP_TST: /* TST */ \
 			result = a & b; \
@@ -212,6 +212,7 @@ const char *uop_opcode_to_str(int opcode)
 		OP_TO_STR(MVN_REG_S);
 		OP_TO_STR(MULTIPLY);
 		OP_TO_STR(MULTIPLY_LONG);
+		OP_TO_STR(COUNT_LEADING_ZEROS);
 		OP_TO_STR(MOVE_TO_SR_IMM);
 		OP_TO_STR(MOVE_TO_SR_REG);
 		OP_TO_STR(MOVE_FROM_SR);
@@ -1334,43 +1335,44 @@ static inline __ALWAYS_INLINE void uop_data_processing_imm_shift(struct uop *op)
 		default: case 0: // LSL
 			if(shift_imm == 0) {
 				// shouldn't see this form, it would have been factored out into a simpler instruction
-				shifter_carry_out = get_condition(PSR_CC_CARRY);
 				shifter_operand = temp_word2;
+				shifter_carry_out = get_condition(PSR_CC_CARRY);
 			} else {
-				shifter_carry_out = temp_word2 & (1 << (32 - shift_imm));
 				shifter_operand = LSL(temp_word2, shift_imm);
+				shifter_carry_out = BIT(temp_word2, 32 - shift_imm);
 			}
 			break;
 		case 1: // LSR
 			if(shift_imm == 0) {
-				shifter_carry_out = temp_word2 & 0x80000000;
 				shifter_operand = 0;
+				shifter_carry_out = BIT(temp_word2, 31);
 			} else {
-				shifter_carry_out = temp_word2 & (1<<(shift_imm-1));
 				shifter_operand = LSR(temp_word2, shift_imm);
+				shifter_carry_out = BIT(temp_word2, shift_imm - 1);
 			}
 			break;
 		case 2: // ASR
 			if(shift_imm == 0) {
-				if(temp_word2 & 0x80000000) {
-					shifter_operand = 0xffffffff;
-					shifter_carry_out = 0x80000000;
-				} else {
+				if(BIT(temp_word2, 31) == 0) {
 					shifter_operand = 0;
-					shifter_carry_out = 0;
+					shifter_carry_out = 0; // Rm[31] == 0
+				} else {
+					shifter_operand = 0xffffffff;
+					shifter_carry_out = 0x80000000; // Rm[31] == 1
 				}
 			} else {
-				shifter_carry_out = temp_word2 & (1<<(shift_imm-1));
 				shifter_operand = ASR(temp_word2, shift_imm);
+				shifter_carry_out = BIT(temp_word2, shift_imm - 1);
 			}
 			break;
 		case 3: // ROR
 			if(shift_imm == 0) {
-				shifter_carry_out = temp_word2 & 0x1;
-				shifter_operand = (get_condition(PSR_CC_CARRY) ? 0x80000000: 0) | (temp_word2 >> 1);
+				// RRX
+				shifter_operand = (get_condition(PSR_CC_CARRY) ? 0x80000000: 0) | LSR(temp_word2, 1);
+				shifter_carry_out = BIT(temp_word2, 0);
 			} else {
-				shifter_carry_out = temp_word2 & (1<<(shift_imm-1));
 				shifter_operand = ROR(temp_word2, shift_imm);
+				shifter_carry_out = BIT(temp_word2, shift_imm - 1);
 			}
 			break;
 	}
@@ -1437,67 +1439,72 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_shift(struct uop *op)
 	word temp_word = get_reg(op->data_processing_reg_shift.source_reg);
 	word temp_word2 = get_reg(op->data_processing_reg_shift.source2_reg);
 	word temp_word3 = get_reg(op->data_processing_reg_shift.shift_reg);
+	
+	// we only care about the bottom 8 bits of Rs
+	temp_word3 = BITS(temp_word3, 7, 0);
 
 	// handle the immediate shift form of barrel shifter
 	switch(op->data_processing_reg_shift.shift_opcode) {
-		default: case 0: // LSL by reg
+		default: case 0: // LSL by reg (page A5-10)
 			if(temp_word3 == 0) {
 				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
 			} else if(temp_word3 < 32) {
-				shifter_operand = LSL(temp_word2, temp_word3);
-				shifter_carry_out = temp_word2 & (1 << (32 - temp_word3));
+				word lower_shift = BITS(temp_word3, 7, 0);
+				shifter_operand = LSL(temp_word2, lower_shift);
+				shifter_carry_out = BIT(temp_word2, 32 - lower_shift);
 			} else if(temp_word3 == 32) {
 				shifter_operand = 0;
-				shifter_carry_out = temp_word2 & 0x1;
+				shifter_carry_out = BIT(temp_word2, 0);
 			} else { // temp_word3 > 32
 				shifter_operand = 0;
 				shifter_carry_out = 0;
 			}
 			break;
-		case 1: // LSR by reg
+		case 1: // LSR by reg (page A5-12)
 			if(temp_word3 == 0) {
-				shifter_operand = 0;
+				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
 			} else if(temp_word3 < 32) {
 				shifter_operand = LSR(temp_word2, temp_word3);
-				shifter_carry_out = temp_word2 & (1 << (temp_word3 - 1));
+				shifter_carry_out = BIT(temp_word2, temp_word3 - 1);
 			} else if(temp_word3 == 32) {
 				shifter_operand = 0;
-				shifter_carry_out = temp_word2 & 0x80000000;
+				shifter_carry_out = BIT(temp_word2, 31);
 			} else {
 				shifter_operand = 0;
 				shifter_carry_out = 0;
 			}
 			break;
-		case 2: // ASR by reg
+		case 2: // ASR by reg (page A5-14)
 			if(temp_word3 == 0) {
 				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
 			} else if(temp_word3 < 32) {
 				shifter_operand = ASR(temp_word2, temp_word3);
-				shifter_carry_out = temp_word2 & (1<<(temp_word3-1));
+				shifter_carry_out = BIT(temp_word2, temp_word3 - 1);
 			} else if(temp_word3 >= 32) {
-				if(temp_word2 & 0x80000000) {
-					shifter_operand = 0xffffffff;
-					shifter_carry_out = 0x80000000;
-				} else {
+				if(BIT(temp_word2, 31) == 0) {
 					shifter_operand = 0;
-					shifter_carry_out = 0;
+					shifter_carry_out = 0; // Rm[31] == 0
+				} else {
+					shifter_operand = 0xffffffff;
+					shifter_carry_out = 0x80000000; // Rm[31] == 1
 				}
 			}
 			break;
-		case 3: // ROR by reg
+		case 3: // ROR by reg (page A5-16)
 			if(temp_word3 == 0) {
 				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
-			} else if((temp_word3 & 0x1f) == 0) {
+			} else if(BITS(temp_word3, 4, 0) == 0) {
 				shifter_operand = temp_word2;
-				shifter_carry_out = temp_word2 & 0x80000000;
+				shifter_carry_out = BIT(temp_word2, 31);
 			} else { // temp_word3 & 0x1f > 0
-				shifter_operand = ROR(temp_word2, temp_word3 & 0x1f);
-				shifter_carry_out = temp_word2 & (1<<((temp_word3 & 0x1f)-1));
-			}					
+				word lower_4bits = BITS(temp_word3, 4, 0);
+				shifter_operand = ROR(temp_word2, lower_4bits);
+				shifter_carry_out = BIT(temp_word2, lower_4bits - 1);
+			}
 			break;
 	}
 
@@ -2197,7 +2204,7 @@ static inline __ALWAYS_INLINE void uop_count_leading_zeros(struct uop *op)
 	count = clz(val);
 	
 	// put the result back
-	put_reg(op->count_leading_zeros.dest_reg, val);
+	put_reg(op->count_leading_zeros.dest_reg, count);
 
 	// XXX cycle count, or is it always 1 cycle?
 

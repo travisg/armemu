@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include <debug.h>
 #include <config.h>
 #include <arm/arm.h>
 #include <sys/sys.h>
@@ -113,6 +114,20 @@ static word debug_get_put(armaddr_t address, word data, int size, int put)
 		case DEBUG_MEMDUMP_WORD:
 			dump_memory_word(debug.memory_dump_addr, debug.memory_dump_len);
 			return 0;
+#if DYNAMIC_TRACE_LEVELS
+		case DEBUG_SET_TRACELEVEL_CPU:
+			TRACE_CPU_LEVEL = data;
+			return 0;
+		case DEBUG_SET_TRACELEVEL_UOP:
+			TRACE_UOP_LEVEL = data;
+			return 0;
+		case DEBUG_SET_TRACELEVEL_SYS:
+			TRACE_SYS_LEVEL = data;
+			return 0;
+		case DEBUG_SET_TRACELEVEL_MMU:
+			TRACE_MMU_LEVEL = data;
+			return 0;
+#endif
         default:
             return 0;
         }
