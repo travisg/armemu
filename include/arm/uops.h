@@ -87,6 +87,9 @@ enum uop_opcode {
 	MULTIPLY,
 	MULTIPLY_LONG,
 
+	// count leading zeros
+	COUNT_LEADING_ZEROS,
+
 	// move from/to status register
 	MOVE_TO_SR_IMM,
 	MOVE_TO_SR_REG,
@@ -236,6 +239,12 @@ struct uop {
 			byte source_reg;
 			byte source2_reg;
 		} mull;
+
+		// count leading zeros
+		struct {
+			byte dest_reg;
+			byte source_reg;
+		} count_leading_zeros;
 
 		// move from/to status register
 #define UOPMSR_R_BIT						0x1 // access to spsr instead of cpsr

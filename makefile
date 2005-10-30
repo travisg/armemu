@@ -55,6 +55,7 @@ OBJS := \
 	arm/cp15.o \
 	util/atomic.o \
 	util/atomic_asm.o \
+	util/math.o
 
 # the sys- dir will have it's own set of files to compile
 include sys-$(SYSTARGET)/makefile

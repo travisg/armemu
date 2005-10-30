@@ -62,6 +62,12 @@
 #define DEBUG_REGDUMP (DEBUG_REGS_BASE + 4) /* writes to this register cause the emulator to dump registers */
 #define DEBUG_HALT    (DEBUG_REGS_BASE + 8) /* writes to this register will halt the emulator */
 
+#define DEBUG_MEMDUMPADDR (DEBUG_REGS_BASE + 12)      /* set the base address of memory to dump */
+#define DEBUG_MEMDUMPLEN  (DEBUG_REGS_BASE + 16)      /* set the length of memory to dump */
+#define DEBUG_MEMDUMP_BYTE  (DEBUG_REGS_BASE + 20)    /* trigger a memory dump in byte format */
+#define DEBUG_MEMDUMP_HALFWORD (DEBUG_REGS_BASE + 24) /* trigger a memory dump in halfword format */
+#define DEBUG_MEMDUMP_WORD (DEBUG_REGS_BASE + 28)     /* trigger a memory dump in word format */
+
 	/* mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
 #define PIC_MASK          (PIC_REGS_BASE + 0)
 	/* each bit corresponds to the current status of the interrupt line */

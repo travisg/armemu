@@ -209,15 +209,32 @@ void op_mrs(struct uop *op)
 		op->flags |= UOPMSR_R_BIT;
 	op->move_from_sr.reg = Rd;
 
-	CPU_TRACE(5, "\t\top_mrs: R %d, Rd 0x%x\n", R?1:0, Rd);	
+	CPU_TRACE(5, "\t\top_mrs: R %d, Rd %d\n", R?1:0, Rd);	
 #undef R
 }
 
 void op_clz(struct uop *op)
 {
-	panic_cpu("op_clz: unimplemented decode!\n");
+	word ins = op->undecoded.raw_instruction;
+	int Rd, Rm;
 
-	// ARMv5 and above
+	// only supported on ARMv5+
+	if(get_isa() < ARM_V5) {
+		op_undefined(op);
+		return;
+	}
+
+	// decode the instruction
+	Rd = BITS_SHIFT(ins, 15, 12);
+	Rm = BITS(ins, 3, 0);
+
+	// translate
+	op->opcode = COUNT_LEADING_ZEROS;
+	op->cond = (ins >> COND_SHIFT) & COND_MASK;
+	op->count_leading_zeros.dest_reg = Rd;
+	op->count_leading_zeros.source_reg = Rm;
+
+	CPU_TRACE(5, "\t\top_clz: Rd %d Rm %d\n", Rd, Rm);
 }
 
 void op_pld(struct uop *op)

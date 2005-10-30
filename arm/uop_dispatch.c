@@ -28,6 +28,9 @@
 #include <arm/arm.h>
 #include <arm/decoder.h>
 #include <util/atomic.h>
+#include <util/math.h>
+
+#define ASSERT_VALID_REG(x) ASSERT((x) >= 0 && (x) < 16);
 
 #define DATA_PROCESSING_OP_TABLE(opcode, result, a, b, arith_op, Rd_writeback, carry, ovl) \
 	switch(opcode) { \
@@ -1148,10 +1151,10 @@ static inline __ALWAYS_INLINE void uop_data_processing_imm(struct uop *op)
 {
 	word immediate = op->data_processing_imm.immediate;
 	word temp_word = get_reg(op->data_processing_imm.source_reg);
-	ASSERT(op->data_processing_imm.dp_opcode < 16);
-	
-	ASSERT(op->data_processing_imm.source_reg < 16);
-	ASSERT(op->data_processing_imm.dest_reg < 16);
+
+	ASSERT_VALID_REG(op->data_processing_imm.dp_opcode);
+	ASSERT_VALID_REG(op->data_processing_imm.source_reg);
+	ASSERT_VALID_REG(op->data_processing_imm.dest_reg);
 
 	DATA_PROCESSING_OP_TABLE_NOFLAGS(op->data_processing_imm.dp_opcode,
 		temp_word, // result
@@ -1177,9 +1180,9 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg(struct uop *op)
 	word operand2 = get_reg(op->data_processing_reg.source2_reg);
 	
 	ASSERT(op->data_processing_reg.dp_opcode < 16);
-	ASSERT(op->data_processing_reg.source_reg < 16);
-	ASSERT(op->data_processing_reg.source2_reg < 16);
-	ASSERT(op->data_processing_reg.dest_reg < 16);
+	ASSERT_VALID_REG(op->data_processing_reg.source_reg);
+	ASSERT_VALID_REG(op->data_processing_reg.source2_reg);
+	ASSERT_VALID_REG(op->data_processing_reg.dest_reg);
 
 	DATA_PROCESSING_OP_TABLE_NOFLAGS(op->data_processing_reg.dp_opcode,
 		temp_word, // result
@@ -1209,8 +1212,8 @@ static inline __ALWAYS_INLINE void uop_data_processing_imm_s(struct uop *op)
 	word temp_word = get_reg(op->data_processing_imm.source_reg);
 	
 	ASSERT(op->data_processing_imm.dp_opcode < 16);
-	ASSERT(op->data_processing_imm.source_reg < 16);
-	ASSERT(op->data_processing_imm.dest_reg < 16);
+	ASSERT_VALID_REG(op->data_processing_imm.source_reg);
+	ASSERT_VALID_REG(op->data_processing_imm.dest_reg);
 
 	Rd_writeback = TRUE;
 	arith_op = FALSE;
@@ -1264,9 +1267,9 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_s(struct uop *op)
 	word temp_word2 = get_reg(op->data_processing_reg.source2_reg);
 	
 	ASSERT(op->data_processing_reg.dp_opcode < 16);
-	ASSERT(op->data_processing_reg.source_reg < 16);
-	ASSERT(op->data_processing_reg.source2_reg < 16);
-	ASSERT(op->data_processing_reg.dest_reg < 16);
+	ASSERT_VALID_REG(op->data_processing_reg.source_reg);
+	ASSERT_VALID_REG(op->data_processing_reg.source2_reg);
+	ASSERT_VALID_REG(op->data_processing_reg.dest_reg);
 
 	Rd_writeback = TRUE;
 	arith_op = FALSE;
@@ -1317,9 +1320,9 @@ static inline __ALWAYS_INLINE void uop_data_processing_imm_shift(struct uop *op)
 
 	ASSERT(op->data_processing_imm_shift.shift_opcode < 4);
 	ASSERT(op->data_processing_imm_shift.dp_opcode < 16);
-	ASSERT(op->data_processing_imm_shift.source_reg < 16);
-	ASSERT(op->data_processing_imm_shift.source2_reg < 16);
-	ASSERT(op->data_processing_imm_shift.dest_reg < 16);
+	ASSERT_VALID_REG(op->data_processing_imm_shift.source_reg);
+	ASSERT_VALID_REG(op->data_processing_imm_shift.source2_reg);
+	ASSERT_VALID_REG(op->data_processing_imm_shift.dest_reg);
 
 	// first operand
 	word temp_word = get_reg(op->data_processing_imm_shift.source_reg);
@@ -1426,9 +1429,9 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_shift(struct uop *op)
 
 	ASSERT(op->data_processing_reg_shift.shift_opcode < 4);
 	ASSERT(op->data_processing_reg_shift.dp_opcode < 16);
-	ASSERT(op->data_processing_reg_shift.source_reg < 16);
-	ASSERT(op->data_processing_reg_shift.source2_reg < 16);
-	ASSERT(op->data_processing_reg_shift.dest_reg < 16);
+	ASSERT_VALID_REG(op->data_processing_reg_shift.source_reg);
+	ASSERT_VALID_REG(op->data_processing_reg_shift.source2_reg);
+	ASSERT_VALID_REG(op->data_processing_reg_shift.dest_reg);
 
 	// operands
 	word temp_word = get_reg(op->data_processing_reg_shift.source_reg);
@@ -2132,6 +2135,7 @@ static inline __ALWAYS_INLINE void uop_multiply_long(struct uop *op)
 	word temp_word2 = get_reg(op->mull.source2_reg);
 
 	// signed or unsigned multiply
+	// XXX is this correct
 	if(op->flags & UOPMULFLAGS_SIGNED) {
 		int64_t result = (int64_t)temp_word * (int64_t)temp_word2;
 		reslo = result;
@@ -2176,6 +2180,29 @@ static inline __ALWAYS_INLINE void uop_multiply_long(struct uop *op)
 #endif
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_MUL);
+#endif
+}
+
+static inline __ALWAYS_INLINE void uop_count_leading_zeros(struct uop *op)
+{
+	word val;
+	int count;
+
+	ASSERT_VALID_REG(op->count_leading_zeros.source_reg);
+	ASSERT_VALID_REG(op->count_leading_zeros.dest_reg);
+
+	// get the value we're supposed to count
+	val = get_reg(op->count_leading_zeros.source_reg);
+	
+	count = clz(val);
+	
+	// put the result back
+	put_reg(op->count_leading_zeros.dest_reg, val);
+
+	// XXX cycle count, or is it always 1 cycle?
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_MISC);
 #endif
 }
 
@@ -2632,6 +2659,9 @@ int uop_dispatch_loop(void)
 				break;
 			case MULTIPLY_LONG:
 				uop_multiply_long(op);
+				break;
+		    case COUNT_LEADING_ZEROS:
+				uop_count_leading_zeros(op);
 				break;
 			case MOVE_TO_SR_IMM:
 				uop_move_to_sr_imm(op);
