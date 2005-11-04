@@ -179,7 +179,7 @@ static void invalidate_tcache(void)
 
 static inline int tcache_hash(armaddr_t vaddr)
 {
-	return (vaddr / TCACHE_PAGESIZE) & (NUM_TCACHE_ENTRIES-1);
+	return (vaddr / TCACHE_PAGESIZE) % NUM_TCACHE_ENTRIES;
 }
 
 static inline struct translation_cache_entry *lookup_tcache_entry(armaddr_t vaddr, bool write, bool priviledged)
@@ -224,11 +224,12 @@ static void add_tcache_entry(armaddr_t vaddr, armaddr_t paddr, bool write, bool 
 	else
 		ent->hostaddr_delta = 0;
 	ent->paddr_delta = paddr - vaddr;
-	ent->flags = TCACHE_PRESENT;
+	ent->flags = 0;
 	if(write)
 		ent->flags |= TCACHE_WRITE;
 	if(priviledged)
 		ent->flags |= TCACHE_PRIVILEDGED;
+	ent->flags |= TCACHE_PRESENT;
 
 //	printf("add_tcache_entry: vaddr 0x%x paddr 0x%x write %d priviledged %d hostaddr_delta 0x%x paddr_delta 0x%x\n",
 //		vaddr, paddr, write, priviledged, ent->hostaddr_delta, ent->paddr_delta);
