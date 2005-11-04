@@ -388,24 +388,23 @@ void op_data_processing(struct uop *op)
 			int shift_op = BITS_SHIFT(ins, 6, 5);
 			word shift_imm = BITS_SHIFT(ins, 11, 7);
 
-
 			/* look for a fast case where the barrel shifter is disabled and the third operand falls through unscathed */
 			if(shift_op == 0 && shift_imm == 0) {
-				if(!S && Rd == Rm && opcode == 0xd) { // all registers are the same and opcode is mov
+				if(!S && Rd == Rm && opcode == AOP_MOV) { // all registers are the same and opcode is mov
 					// nop
 					op->opcode = NOP;
 					CPU_TRACE(6, "\t\tNOP\n");					
-				} else if(!S && opcode == 0xd) { // registers are not the same and opcode is mov
+				} else if(Rd != PC && !S && opcode == AOP_MOV) { // registers are not the same and opcode is mov
 					op->opcode = MOV_REG;
 					op->simple_dp_reg.dest_reg = Rd;
 					op->simple_dp_reg.source2_reg = Rm;
 					CPU_TRACE(6, "\t\tMOV_REG: Rd %d Rm %d\n", Rd, Rm);	
-				} else if(S && opcode == 0xa) { // compare two regs
+				} else if(S && opcode == AOP_CMP) { // compare two regs
 					op->opcode = CMP_REG_S;
 					op->simple_dp_reg.source_reg = Rn;
 					op->simple_dp_reg.source2_reg = Rm;
 					CPU_TRACE(6, "\t\tCMP_REG_S: Rn %d Rm %d\n", Rn, Rm);
-				} else if(!S && opcode == 0x4) { // add two regs and store in a third
+				} else if(Rd != PC && !S && opcode == AOP_ADD) { // add two regs and store in a third
 					op->opcode = ADD_REG;
 					op->simple_dp_reg.dest_reg = Rd;
 					op->simple_dp_reg.source_reg = Rn;
@@ -426,6 +425,47 @@ void op_data_processing(struct uop *op)
 				break;
 			}
 
+			/* look for variations of LSL/LSR/ASR/ROR */
+			if(Rd != PC && opcode == AOP_MOV && shift_imm != 0) {
+				switch(shift_op) {
+				case 0: // LSL
+					if(S)
+						op->opcode = LSL_IMM_S;
+					else
+						op->opcode = LSL_IMM;
+					op->simple_dp_imm.dest_reg = Rd;
+					op->simple_dp_imm.source_reg = Rm;
+					op->simple_dp_imm.immediate = shift_imm;
+					CPU_TRACE(6, "\t\tLSL_IMM: S Rd %d Rm %d shift_immed %d S %d\n", Rd, Rm, shift_imm, S?1:0);
+					break;
+				case 1: // LSR
+					if(S)
+						op->opcode = LSR_IMM_S;
+					else
+						op->opcode = LSR_IMM;
+					op->simple_dp_imm.dest_reg = Rd;
+					op->simple_dp_imm.source_reg = Rm;
+					op->simple_dp_imm.immediate = shift_imm;
+					CPU_TRACE(6, "\t\tLSR_IMM: S Rd %d Rm %d shift_immed %d S %d\n", Rd, Rm, shift_imm, S?1:0);
+					break;
+				case 2: // LSR
+					if(S)
+						op->opcode = ASR_IMM_S;
+					else
+						op->opcode = ASR_IMM;
+					op->simple_dp_imm.dest_reg = Rd;
+					op->simple_dp_imm.source_reg = Rm;
+					op->simple_dp_imm.immediate = shift_imm;
+					CPU_TRACE(6, "\t\tASR_IMM: S Rd %d Rm %d shift_immed %d S %d\n", Rd, Rm, shift_imm, S?1:0);
+					break;
+				case 3: // ROR
+					// XXX no immediate form right now.
+					goto imm_longform;
+				}
+				break;
+			}
+
+  imm_longform:
 			CPU_TRACE(6, "\t\tIMM_SHIFT: opcode %d (%s) Rd %d Rn %d Rm %d shift_imm %d shift_op 0x%x\n", opcode, dp_op_to_str(opcode), Rd, Rn, Rm, shift_imm, shift_op);
 
 			/* translates to the relatively slow DATA_PROCESSING_IMM_SHIFT */
@@ -444,6 +484,53 @@ void op_data_processing(struct uop *op)
 			int Rm = BITS(ins, 3, 0);
 			word shift_op = BITS_SHIFT(ins, 6, 5);
 			int Rs = BITS_SHIFT(ins, 11, 8);
+
+			/* look for variations of LSL/LSR/ASR/ROR */
+			if(Rd != PC && opcode == AOP_MOV) {
+				switch(shift_op) {
+				case 0: // LSL
+					if(S)
+						op->opcode = LSL_REG_S;
+					else
+						op->opcode = LSL_REG;
+					op->simple_dp_reg.dest_reg = Rd;
+					op->simple_dp_reg.source_reg = Rm;
+					op->simple_dp_reg.source2_reg = Rs;
+					CPU_TRACE(6, "\t\tLSL_REG: S Rd %d Rm %d Rs %d S %d\n", Rd, Rm, Rs, S?1:0);
+					break;
+				case 1: // LSR
+					if(S)
+						op->opcode = LSR_REG_S;
+					else
+						op->opcode = LSR_REG;
+					op->simple_dp_reg.dest_reg = Rd;
+					op->simple_dp_reg.source_reg = Rm;
+					op->simple_dp_reg.source2_reg = Rs;
+					CPU_TRACE(6, "\t\tLSR_REG: S Rd %d Rm %d Rs %d S %d\n", Rd, Rm, Rs, S?1:0);
+					break;
+				case 2: // LSR
+					if(S)
+						op->opcode = ASR_REG_S;
+					else
+						op->opcode = ASR_REG;
+					op->simple_dp_reg.dest_reg = Rd;
+					op->simple_dp_reg.source_reg = Rm;
+					op->simple_dp_reg.source2_reg = Rs;
+					CPU_TRACE(6, "\t\tLSR_REG: S Rd %d Rm %d Rs %d S %d\n", Rd, Rm, Rs, S?1:0);
+					break;
+				case 3: // ROR
+					if(S)
+						op->opcode = ROR_REG_S;
+					else
+						op->opcode = ROR_REG;
+					op->simple_dp_reg.dest_reg = Rd;
+					op->simple_dp_reg.source_reg = Rm;
+					op->simple_dp_reg.source2_reg = Rs;
+					CPU_TRACE(6, "\t\tROR_REG: S Rd %d Rm %d Rs %d S %d\n", Rd, Rm, Rs, S?1:0);
+					break;
+				}
+				break;
+			}
 
 			CPU_TRACE(6, "\t\tREG_SHIFT: opcode %d (%s) Rd %d Rn %d Rm %d Rs %d shift_op %d\n", opcode, dp_op_to_str(opcode), Rd, Rn, Rm, Rs, shift_op);
 
@@ -469,13 +556,13 @@ void op_data_processing(struct uop *op)
 			}
 
 			// look for further special cases
-			if(!S && opcode == AOP_MOV) { // MOV
+			if(Rd != PC && !S && opcode == AOP_MOV) { // MOV
 				op->opcode = MOV_IMM;
 				op->simple_dp_imm.dest_reg = Rd;
 				op->simple_dp_imm.immediate = immed;
 
 				CPU_TRACE(6, "\t\tMOV_IMM: Rd %d immed %d\n", Rd, immed);
-			} else if(!S && opcode == AOP_MVN) { // MVN
+			} else if(Rd != PC && !S && opcode == AOP_MVN) { // MVN
 				op->opcode = MOV_IMM;
 				op->simple_dp_imm.dest_reg = Rd;
 				op->simple_dp_imm.immediate = ~immed;
@@ -493,20 +580,28 @@ void op_data_processing(struct uop *op)
 				op->simple_dp_imm.immediate = -immed;
 
 				CPU_TRACE(6, "\t\tCMN_IMM_S: Rn %d immed %d\n", Rn, immed);
-			} else if(!S && opcode == AOP_ADD) { // ADD
+			} else if(Rd != PC && !S && opcode == AOP_ADD) { // ADD
 				op->opcode = ADD_IMM;
 				op->simple_dp_imm.dest_reg = Rd;
 				op->simple_dp_imm.source_reg = Rn;
 				op->simple_dp_imm.immediate = immed;
 
 				CPU_TRACE(6, "\t\tADD_IMM: Rd %d Rn %d immed %d\n", Rd, Rn, immed);
-			} else if(!S && opcode == AOP_SUB) { // SUB
+			} else if(Rd != PC && !S && opcode == AOP_SUB) { // SUB
 				op->opcode = ADD_IMM;
 				op->simple_dp_imm.dest_reg = Rd;
 				op->simple_dp_imm.source_reg = Rn;
 				op->simple_dp_imm.immediate = -immed;
 
 				CPU_TRACE(6, "\t\tSUB_IMM: Rd %d Rn %d immed %d\n", Rd, Rn, immed);
+				break;
+			} else if(Rd != PC && !S && opcode == AOP_ORR) { // SUB
+				op->opcode = ORR_IMM;
+				op->simple_dp_imm.dest_reg = Rd;
+				op->simple_dp_imm.source_reg = Rn;
+				op->simple_dp_imm.immediate = immed;
+
+				CPU_TRACE(6, "\t\tORR_IMM: Rd %d Rn %d immed %d\n", Rd, Rn, immed);
 				break;
 			} else {
 				/* translates to more generic DATA_PROCESSING_IMM */

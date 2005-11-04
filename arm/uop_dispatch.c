@@ -30,7 +30,7 @@
 #include <util/atomic.h>
 #include <util/math.h>
 
-#define ASSERT_VALID_REG(x) ASSERT((x) >= 0 && (x) < 16);
+#define ASSERT_VALID_REG(x) ASSERT((x) < 16);
 
 #define DATA_PROCESSING_OP_TABLE(opcode, result, a, b, arith_op, Rd_writeback, carry, ovl) \
 	switch(opcode) { \
@@ -197,14 +197,22 @@ const char *uop_opcode_to_str(int opcode)
 		OP_TO_STR(ADC_REG_S);
 		OP_TO_STR(SUB_REG_S);
 		OP_TO_STR(SBC_REG_S);
-		OP_TO_STR(LSL_IMM_S);
-		OP_TO_STR(LSL_REG_S);
-		OP_TO_STR(LSR_IMM_S);
-		OP_TO_STR(LSR_REG_S);
-		OP_TO_STR(ASR_IMM_S);
-		OP_TO_STR(ASR_REG_S);
-		OP_TO_STR(ROR_REG_S);
+		OP_TO_STR(ORR_IMM);
 		OP_TO_STR(ORR_REG_S);
+		OP_TO_STR(LSL_IMM);
+		OP_TO_STR(LSL_IMM_S);
+		OP_TO_STR(LSL_REG);
+		OP_TO_STR(LSL_REG_S);
+		OP_TO_STR(LSR_IMM);
+		OP_TO_STR(LSR_IMM_S);
+		OP_TO_STR(LSR_REG);
+		OP_TO_STR(LSR_REG_S);
+		OP_TO_STR(ASR_IMM);
+		OP_TO_STR(ASR_IMM_S);
+		OP_TO_STR(ASR_REG);
+		OP_TO_STR(ASR_REG_S);
+		OP_TO_STR(ROR_REG);
+		OP_TO_STR(ROR_REG_S);
 		OP_TO_STR(AND_REG_S);
 		OP_TO_STR(EOR_REG_S);
 		OP_TO_STR(BIC_REG_S);
@@ -593,7 +601,10 @@ static inline __ALWAYS_INLINE void uop_load_immediate_word(struct uop *op)
 	// a very simple load, the address is already precalculated
 	if(mmu_read_mem_word(op->load_immediate.address, &temp_word))
 		return;
+
+	// XXX on armv5 this can switch to thumb
 	put_reg(op->load_immediate.target_reg, temp_word);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_LOAD);
 #endif
@@ -617,7 +628,10 @@ static inline __ALWAYS_INLINE void uop_load_immediate_halfword(struct uop *op)
 	temp_word = temp_halfword;
 	if(op->flags & UOPLSFLAGS_SIGN_EXTEND)
 		temp_word = SIGN_EXTEND(temp_word, 15);
+
+	// XXX on armv5 this can switch to thumb
 	put_reg(op->load_immediate.target_reg, temp_word);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_LOAD);
 #endif
@@ -643,7 +657,10 @@ static inline __ALWAYS_INLINE void uop_load_immediate_byte(struct uop *op)
 	temp_word = temp_byte;
 	if(op->flags & UOPLSFLAGS_SIGN_EXTEND)
 		temp_word = SIGN_EXTEND(temp_word, 7);
+
+	// XXX on armv5 this can switch to thumb
 	put_reg(op->load_immediate.target_reg, temp_word);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_LOAD);
 #endif
@@ -701,6 +718,7 @@ static inline __ALWAYS_INLINE void uop_load_immediate_offset(struct uop *op)
 	}
 
 	// store the result
+	// XXX on armv5 this can switch to thumb
 	put_reg(op->load_store_immediate_offset.target_reg, temp_word);
 
 	// do writeback
@@ -727,8 +745,6 @@ static inline __ALWAYS_INLINE void uop_load_scaled_reg_offset(struct uop *op)
 
 	// pretty complex. take two registers, optionally perform a shift operation on the second one,
 	// add them together and then load that address
-	// XXX room for improvement here, since lots of times I'm sure an instruction
-	// decoded to a immediate shift of zero to get plain register add
 	temp_addr2 = get_reg(op->load_store_scaled_reg_offset.source_reg);
 	temp_addr3 = get_reg(op->load_store_scaled_reg_offset.source2_reg);	
 	switch(op->load_store_scaled_reg_offset.shift_op) {
@@ -800,6 +816,7 @@ static inline __ALWAYS_INLINE void uop_load_scaled_reg_offset(struct uop *op)
 	}
 
 	// store the result
+	// XXX on armv5 this can switch to thumb
 	put_reg(op->load_store_scaled_reg_offset.target_reg, temp_word);
 
 	// do writeback
@@ -858,6 +875,7 @@ static inline __ALWAYS_INLINE void uop_store_immediate_offset(struct uop *op)
 	// do writeback
 	if(op->flags & UOPLSFLAGS_WRITEBACK)
 		put_reg(op->load_store_immediate_offset.source_reg, temp_addr3);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_STORE);
 #endif
@@ -976,6 +994,8 @@ static inline __ALWAYS_INLINE void uop_load_multiple(struct uop *op)
 				put_reg(op->load_store_multiple.base_reg, temp_addr);
 				return;
 			}
+
+			// XXX on armv5 this can switch to thumb
 			put_reg(i, temp_word);
 			temp_addr2 += 4;
 		}
@@ -1148,12 +1168,13 @@ static inline __ALWAYS_INLINE void uop_store_multiple_s(struct uop *op)
 #endif
 }
 
+// generic data process with immediate operand, no S bit, PC may be target
 static inline __ALWAYS_INLINE void uop_data_processing_imm(struct uop *op)
 {
 	word immediate = op->data_processing_imm.immediate;
 	word temp_word = get_reg(op->data_processing_imm.source_reg);
 
-	ASSERT_VALID_REG(op->data_processing_imm.dp_opcode);
+	ASSERT(op->data_processing_imm.dp_opcode < 16);
 	ASSERT_VALID_REG(op->data_processing_imm.source_reg);
 	ASSERT_VALID_REG(op->data_processing_imm.dest_reg);
 
@@ -1175,6 +1196,7 @@ static inline __ALWAYS_INLINE void uop_data_processing_imm(struct uop *op)
 #endif
 }
 
+// generic data processing with register operand, no S bit, PC may be target
 static inline __ALWAYS_INLINE void uop_data_processing_reg(struct uop *op)
 {
 	word temp_word = get_reg(op->data_processing_reg.source_reg);
@@ -1203,6 +1225,7 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg(struct uop *op)
 #endif
 }
 
+// generic data process with immediate operand, S bit, PC may be target
 static inline __ALWAYS_INLINE void uop_data_processing_imm_s(struct uop *op)
 {
 	bool Rd_writeback;
@@ -1258,6 +1281,7 @@ static inline __ALWAYS_INLINE void uop_data_processing_imm_s(struct uop *op)
 #endif
 }
 
+// generic data processing with register operand, S bit, PC may be target
 static inline __ALWAYS_INLINE void uop_data_processing_reg_s(struct uop *op) 
 {
 	bool Rd_writeback;
@@ -1310,6 +1334,7 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_s(struct uop *op)
 #endif
 }
 
+// generic data processing with immediate barrel shifter, no S bit, PC may be target
 static inline __ALWAYS_INLINE void uop_data_processing_imm_shift(struct uop *op)
 {
 	bool Rd_writeback;
@@ -1421,6 +1446,7 @@ static inline __ALWAYS_INLINE void uop_data_processing_imm_shift(struct uop *op)
 #endif
 }	
 
+// generic data processing with register based barrel shifter, no S bit, PC may be target
 static inline __ALWAYS_INLINE void uop_data_processing_reg_shift(struct uop *op) 
 	{
 	bool Rd_writeback;
@@ -1556,31 +1582,38 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_shift(struct uop *op)
 #endif
 }
 
+// simple load of immediate into register, PC may not be target
 static inline __ALWAYS_INLINE void uop_mov_imm(struct uop *op) 
 {
-	put_reg(op->simple_dp_imm.dest_reg, op->simple_dp_imm.immediate);
+	put_reg_nopc(op->simple_dp_imm.dest_reg, op->simple_dp_imm.immediate);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple load of immediate into register, set N and Z flags, PC may not be target
 static inline __ALWAYS_INLINE void uop_mov_imm_nz(struct uop *op) 
 {
-	put_reg(op->simple_dp_imm.dest_reg, op->simple_dp_imm.immediate);
+	put_reg_nopc(op->simple_dp_imm.dest_reg, op->simple_dp_imm.immediate);
 	set_NZ_condition(op->simple_dp_imm.immediate);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple mov from register to register, PC may not be target
 static inline __ALWAYS_INLINE void uop_mov_reg(struct uop *op) 
 {
-	put_reg(op->simple_dp_reg.dest_reg, get_reg(op->simple_dp_reg.source2_reg));
+	put_reg_nopc(op->simple_dp_reg.dest_reg, get_reg(op->simple_dp_reg.source2_reg));
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple compare of register to immediate value
 static inline __ALWAYS_INLINE void uop_cmp_imm_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1593,11 +1626,13 @@ static inline __ALWAYS_INLINE void uop_cmp_imm_s(struct uop *op)
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple compare of two registers
 static inline __ALWAYS_INLINE void uop_cmp_reg_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1610,11 +1645,13 @@ static inline __ALWAYS_INLINE void uop_cmp_reg_s(struct uop *op)
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple negative compare of two registers
 static inline __ALWAYS_INLINE void uop_cmn_reg_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1627,11 +1664,13 @@ static inline __ALWAYS_INLINE void uop_cmn_reg_s(struct uop *op)
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// bit test of two registers
 static inline __ALWAYS_INLINE void uop_tst_reg_s(struct uop *op) 
 {
 	word result;
@@ -1645,11 +1684,13 @@ static inline __ALWAYS_INLINE void uop_tst_reg_s(struct uop *op)
 
 	// set flags on the result
 	set_NZ_condition(result);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple add of immediate to register, PC may not be target
 static inline __ALWAYS_INLINE void uop_add_imm(struct uop *op) 
 {
 	word a;
@@ -1657,12 +1698,14 @@ static inline __ALWAYS_INLINE void uop_add_imm(struct uop *op)
 
 	a = get_reg(op->simple_dp_imm.source_reg);
 	result = a + op->simple_dp_imm.immediate;
-	put_reg(op->simple_dp_imm.dest_reg, result);
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple add of immediate to register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_add_imm_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1671,17 +1714,19 @@ static inline __ALWAYS_INLINE void uop_add_imm_s(struct uop *op)
 
 	a = get_reg(op->simple_dp_imm.source_reg);
 	result = do_add(a, op->simple_dp_imm.immediate, 0, &carry, &ovl);
-	put_reg(op->simple_dp_imm.dest_reg, result);
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
 
 	// set flags on the result
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple add of two registers, PC may not be target
 static inline __ALWAYS_INLINE void uop_add_reg(struct uop *op) 
 {
 	word a;
@@ -1691,12 +1736,14 @@ static inline __ALWAYS_INLINE void uop_add_reg(struct uop *op)
 	a = get_reg(op->simple_dp_reg.source_reg);
 	b = get_reg(op->simple_dp_reg.source2_reg);
 	result = a + b;
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple add of two registers, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_add_reg_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1707,17 +1754,19 @@ static inline __ALWAYS_INLINE void uop_add_reg_s(struct uop *op)
 	a = get_reg(op->simple_dp_reg.source_reg);
 	b = get_reg(op->simple_dp_reg.source2_reg);
 	result = do_add(a, b, 0, &carry, &ovl);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 	// set flags on the result
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple add with carry of two registers, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_adc_reg_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1728,17 +1777,19 @@ static inline __ALWAYS_INLINE void uop_adc_reg_s(struct uop *op)
 	a = get_reg(op->simple_dp_reg.source_reg);
 	b = get_reg(op->simple_dp_reg.source2_reg);
 	result = do_add(a, b, get_condition(PSR_CC_CARRY) ? 1 : 0, &carry, &ovl);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 	// set flags on the result
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
+
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// simple subtract of two registers, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_sub_reg_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1749,7 +1800,7 @@ static inline __ALWAYS_INLINE void uop_sub_reg_s(struct uop *op)
 	a = get_reg(op->simple_dp_reg.source_reg);
 	b = get_reg(op->simple_dp_reg.source2_reg);
 	result = do_add(a, -b, 0, &carry, &ovl);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 	// set flags on the result
 	set_NZ_condition(result);
@@ -1760,6 +1811,7 @@ static inline __ALWAYS_INLINE void uop_sub_reg_s(struct uop *op)
 #endif
 }
 
+// simple subtract with carry of two registers, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_sbc_reg_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -1781,6 +1833,61 @@ static inline __ALWAYS_INLINE void uop_sbc_reg_s(struct uop *op)
 #endif
 }
 
+// or with immediate, PC may not be target
+static inline __ALWAYS_INLINE void uop_orr_imm(struct uop *op) 
+{
+	word a;
+	word result;
+
+	a = get_reg(op->simple_dp_imm.source_reg);
+	result = a | op->simple_dp_imm.immediate;
+
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// or by register, S bit, PC may not be target
+static inline __ALWAYS_INLINE void uop_orr_reg_s(struct uop *op) 
+{
+	word a;
+	word b;
+	word result;
+
+	a = get_reg(op->simple_dp_reg.source_reg);
+	b = get_reg(op->simple_dp_reg.source2_reg);
+	result = a | b;
+
+	set_NZ_condition(result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// shift left of register by immediate, PC may not be target
+static inline __ALWAYS_INLINE void uop_lsl_imm(struct uop *op) 
+{
+	word a;
+	word shift;
+	word result;
+
+	a = get_reg(op->simple_dp_imm.source_reg);
+	shift = op->simple_dp_imm.immediate;
+
+	result = LSL(a, shift);
+
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// shift left of register by immediate, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_lsl_imm_s(struct uop *op) 
 {
 	int carry;
@@ -1801,13 +1908,33 @@ static inline __ALWAYS_INLINE void uop_lsl_imm_s(struct uop *op)
 
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
-	put_reg(op->simple_dp_imm.dest_reg, result);
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// shift left of register by register, PC may not be target
+static inline __ALWAYS_INLINE void uop_lsl_reg(struct uop *op) 
+{
+	word a;
+	word shift;
+	word result;
+
+	a = get_reg(op->simple_dp_reg.source_reg);
+	shift = get_reg(op->simple_dp_reg.source2_reg);
+
+	result = LSL(a, shift);
+
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// shift left of register by register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_lsl_reg_s(struct uop *op) 
 {
 	int carry;
@@ -1819,7 +1946,7 @@ static inline __ALWAYS_INLINE void uop_lsl_reg_s(struct uop *op)
 	shift = get_reg(op->simple_dp_reg.source2_reg);
 
 	result = LSL(a, shift);
-	if(result == 0) {
+	if(shift == 0) {
 		carry = get_condition(PSR_CC_CARRY);
 	} else if(shift < 32) {
 		carry = BIT(a, 32 - shift);
@@ -1831,13 +1958,33 @@ static inline __ALWAYS_INLINE void uop_lsl_reg_s(struct uop *op)
 
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// logical shift right by immediate, PC may not be target
+static inline __ALWAYS_INLINE void uop_lsr_imm(struct uop *op) 
+{
+	word a;
+	word immed;
+	word result;
+
+	a = get_reg(op->simple_dp_imm.source_reg);
+	immed = op->simple_dp_imm.immediate;
+
+	result = LSR(a, immed);
+
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// logical shift right by immediate, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_lsr_imm_s(struct uop *op) 
 {
 	int carry;
@@ -1858,13 +2005,33 @@ static inline __ALWAYS_INLINE void uop_lsr_imm_s(struct uop *op)
 
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
-	put_reg(op->simple_dp_imm.dest_reg, result);
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// logical shift right by register, PC may not be target
+static inline __ALWAYS_INLINE void uop_lsr_reg(struct uop *op) 
+{
+	word a;
+	word shift;
+	word result;
+
+	a = get_reg(op->simple_dp_reg.source_reg);
+	shift = get_reg(op->simple_dp_reg.source2_reg);
+
+	result = LSR(a, shift);
+
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// logical shift right by register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_lsr_reg_s(struct uop *op) 
 {
 	int carry;
@@ -1876,7 +2043,7 @@ static inline __ALWAYS_INLINE void uop_lsr_reg_s(struct uop *op)
 	shift = get_reg(op->simple_dp_reg.source2_reg);
 
 	result = LSR(a, shift);
-	if(result == 0) {
+	if(shift == 0) {
 		carry = get_condition(PSR_CC_CARRY);
 	} else if(shift < 32) {
 		carry = BIT(a, shift - 1);
@@ -1888,13 +2055,33 @@ static inline __ALWAYS_INLINE void uop_lsr_reg_s(struct uop *op)
 
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// arithmetic shift right by immediate,  PC may not be target
+static inline __ALWAYS_INLINE void uop_asr_imm(struct uop *op) 
+{
+	word a;
+	word immed;
+	word result;
+
+	a = get_reg(op->simple_dp_imm.source_reg);
+	immed = op->simple_dp_imm.immediate;
+
+	result = ASR(a, immed);
+
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// arithmetic shift right by immediate, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_asr_imm_s(struct uop *op) 
 {
 	int carry;
@@ -1918,13 +2105,33 @@ static inline __ALWAYS_INLINE void uop_asr_imm_s(struct uop *op)
 
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
-	put_reg(op->simple_dp_imm.dest_reg, result);
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// arithmetic shift right by register, S bit, PC may not be target
+static inline __ALWAYS_INLINE void uop_asr_reg(struct uop *op) 
+{
+	word a;
+	word shift;
+	word result;
+
+	a = get_reg(op->simple_dp_reg.source_reg);
+	shift = get_reg(op->simple_dp_reg.source2_reg);
+
+	result = ASR(a, shift);
+
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// arithmetic shift right by register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_asr_reg_s(struct uop *op) 
 {
 	int carry;
@@ -1936,7 +2143,7 @@ static inline __ALWAYS_INLINE void uop_asr_reg_s(struct uop *op)
 	shift = get_reg(op->simple_dp_reg.source2_reg);
 
 	result = ASR(a, shift);
-	if(result == 0) {
+	if(shift == 0) {
 		carry = get_condition(PSR_CC_CARRY);
 	} else if(shift < 32) {
 		carry = BIT(a, shift - 1);
@@ -1950,13 +2157,33 @@ static inline __ALWAYS_INLINE void uop_asr_reg_s(struct uop *op)
 
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// rotate right by register, PC may not be target
+static inline __ALWAYS_INLINE void uop_ror_reg(struct uop *op) 
+{
+	word a;
+	word rotate;
+	word result;
+
+	a = get_reg(op->simple_dp_reg.source_reg);
+	rotate = get_reg(op->simple_dp_reg.source2_reg);
+
+	result = ROR(a, rotate);
+
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
+// rotate right by register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_ror_reg_s(struct uop *op) 
 {
 	int carry;
@@ -1982,31 +2209,14 @@ static inline __ALWAYS_INLINE void uop_ror_reg_s(struct uop *op)
 
 	set_NZ_condition(result);
 	set_condition(PSR_CC_CARRY, carry);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
-static inline __ALWAYS_INLINE void uop_orr_reg_s(struct uop *op) 
-{
-	word a;
-	word b;
-	word result;
-
-	a = get_reg(op->simple_dp_reg.source_reg);
-	b = get_reg(op->simple_dp_reg.source2_reg);
-	result = a | b;
-
-	set_NZ_condition(result);
-	put_reg(op->simple_dp_reg.dest_reg, result);
-
-#if COUNT_ARM_OPS
-	inc_perf_counter(OP_DATA_PROC);
-#endif
-}
-
+// and by register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_and_reg_s(struct uop *op) 
 {
 	word a;
@@ -2018,13 +2228,14 @@ static inline __ALWAYS_INLINE void uop_and_reg_s(struct uop *op)
 	result = a & b;
 
 	set_NZ_condition(result);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// xor by register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_eor_reg_s(struct uop *op) 
 {
 	word a;
@@ -2036,13 +2247,14 @@ static inline __ALWAYS_INLINE void uop_eor_reg_s(struct uop *op)
 	result = a ^ b;
 
 	set_NZ_condition(result);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// bit clear by register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_bic_reg_s(struct uop *op) 
 {
 	word a;
@@ -2054,13 +2266,14 @@ static inline __ALWAYS_INLINE void uop_bic_reg_s(struct uop *op)
 	result = a & ~b;
 
 	set_NZ_condition(result);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// negate register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_neg_reg_s(struct uop *op) 
 {
 	int carry, ovl;
@@ -2073,13 +2286,14 @@ static inline __ALWAYS_INLINE void uop_neg_reg_s(struct uop *op)
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
 	set_NZ_condition(result);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
 #endif
 }
 
+// bitwise negation register, S bit, PC may not be target
 static inline __ALWAYS_INLINE void uop_mvn_reg_s(struct uop *op) 
 {
 	word b;
@@ -2089,7 +2303,7 @@ static inline __ALWAYS_INLINE void uop_mvn_reg_s(struct uop *op)
 	result = ~b;
 
 	set_NZ_condition(result);
-	put_reg(op->simple_dp_reg.dest_reg, result);
+	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_DATA_PROC);
@@ -2622,30 +2836,54 @@ int uop_dispatch_loop(void)
 			case SBC_REG_S:
 				uop_sbc_reg_s(op);
 				break;
+			case ORR_IMM:
+				uop_orr_imm(op);
+				break;			
+			case ORR_REG_S:
+				uop_orr_reg_s(op);
+				break;			
+			case LSL_IMM:	// logical left shift by immediate
+				uop_lsl_imm(op);
+				break;
 			case LSL_IMM_S:	// logical left shift by immediate, sets full conditions
 				uop_lsl_imm_s(op);
+				break;
+			case LSL_REG:	// logical left shift by register
+				uop_lsl_reg(op);
 				break;
 			case LSL_REG_S:	// logical left shift by register, sets full conditions
 				uop_lsl_reg_s(op);
 				break;
+			case LSR_IMM:	// logical right shift by immediate
+				uop_lsr_imm(op);
+				break;
 			case LSR_IMM_S:	// logical right shift by immediate, sets full conditions
 				uop_lsr_imm_s(op);
+				break;
+			case LSR_REG:	// logical right shift by register
+				uop_lsr_reg_s(op);
 				break;
 			case LSR_REG_S:	// logical right shift by register, sets full conditions
 				uop_lsr_reg_s(op);
 				break;
+			case ASR_IMM:	// arithmetic right shift by immediate
+				uop_asr_imm_s(op);
+				break;
 			case ASR_IMM_S:	// arithmetic right shift by immediate, sets full conditions
 				uop_asr_imm_s(op);
+				break;
+			case ASR_REG:	// arithmetic right shift by register
+				uop_asr_reg_s(op);
 				break;
 			case ASR_REG_S:	// arithmetic right shift by register, sets full conditions
 				uop_asr_reg_s(op);
 				break;
+			case ROR_REG:	// rotate right by register
+				uop_ror_reg_s(op);
+				break;
 			case ROR_REG_S:	// rotate right by register, sets full conditions
 				uop_ror_reg_s(op);
 				break;
-			case ORR_REG_S:
-				uop_orr_reg_s(op);
-				break;			
 			case AND_REG_S:
 				uop_and_reg_s(op);
 				break;			

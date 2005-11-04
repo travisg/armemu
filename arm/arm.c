@@ -171,8 +171,10 @@ int start_cpu(void)
 	// spawn a new thread for the cpu
 	SDL_CreateThread(&cpu_startup_thread_entry, NULL);
 
+#if DUMP_STATS
 	// add a function that goes off once a second
-//	SDL_AddTimer(1000, &speedtimer, NULL);
+	SDL_AddTimer(1000, &speedtimer, NULL);
+#endif
 
 	return 0;
 }

@@ -37,6 +37,8 @@
 #define TRACE_MMU_LEVEL 1
 #endif
 
+#define DUMP_STATS      1 // should we run a thread that dumps stats once a second
+
 #define COUNT_CYCLES 	0 // should we try to accurately count cycles
 #define COUNT_ARM_OPS	0
 #define COUNT_UOPS		0

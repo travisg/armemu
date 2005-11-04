@@ -47,11 +47,13 @@ int main(void)
 		/* do some cpu intensive stuff for a bit */
 		cpufunc();
 
+#if 0
 		/* send a repeating char pattern to stdout */
 		c++;
 		if(c > 'z')
 			c = 'a';
 		*(unsigned int *)DEBUG_STDOUT = c;
+#endif
 
 		/* see if a keyboard interrupt went off */
 		if(read_keyboard(&key) >= 0)

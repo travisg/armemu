@@ -249,6 +249,7 @@ enum {
 /* ARM routines */
 reg_t get_reg(int num);
 void put_reg(int num, reg_t data);
+void put_reg_nopc(int num, reg_t data);
 reg_t get_reg_user(int num);            /* "user" mode reg access */
 void put_reg_user(int num, reg_t data); /* same */
 void set_cpu_mode(int mode);
@@ -338,6 +339,12 @@ extern inline void put_reg(int num, reg_t data)
 		cpu.r15_dirty = TRUE; // on the next loop, resync the "real" pc (cpu.pc) with cpu.r[15]
 		cpu.r[PC] &= ~1;
 	}
+}
+
+extern inline void put_reg_nopc(int num, reg_t data)
+{
+	ASSERT(num >= 0 && num < 15);
+	cpu.r[num] = data;
 }
 
 extern inline bool check_condition(byte condition)

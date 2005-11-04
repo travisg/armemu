@@ -68,15 +68,25 @@ enum uop_opcode {
 	ADC_REG_S,					// add with carry, sets full conditions
 	SUB_REG_S,					// subtract, sets full conditions
 	SBC_REG_S,					// subtract with carry, sets full conditions
+
+	ORR_IMM,                    // orr with immediate value, no conditions
+	ORR_REG_S,					// orr, sets NZ condition bits
+
+	LSL_IMM,					// logical left shift by immediate
 	LSL_IMM_S,					// logical left shift by immediate, sets full conditions
+	LSL_REG,					// logical left shift by register
 	LSL_REG_S,					// logical left shift by register, sets full conditions
+	LSR_IMM,					// logical right shift by immediate
 	LSR_IMM_S,					// logical right shift by immediate, sets full conditions
+	LSR_REG,					// logical right shift by register
 	LSR_REG_S,					// logical right shift by register, sets full conditions
+	ASR_IMM,					// arithmetic right shift by immediate
 	ASR_IMM_S,					// arithmetic right shift by immediate, sets full conditions
+	ASR_REG,					// arithmetic right shift by register
 	ASR_REG_S,					// arithmetic right shift by register, sets full conditions
+	ROR_REG,					// rotate right by register
 	ROR_REG_S,					// rotate right by register, sets full conditions
 
-	ORR_REG_S,					// orr, sets NZ condition bits
 	AND_REG_S,					// and, sets NZ condition bits
 	EOR_REG_S,					// exclusive or, sets NZ condition bits
 	BIC_REG_S,					// and with complement, sets NZ condition bits
