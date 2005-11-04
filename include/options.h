@@ -43,6 +43,7 @@
 #define COUNT_ARM_OPS	0
 #define COUNT_UOPS		0
 #define COUNT_ARITH_UOPS 0
+#define COUNT_MMU_OPS   0
 
 // compiler hints
 #define likely(x)   __builtin_expect(!!(x), 1)

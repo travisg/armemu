@@ -32,6 +32,12 @@
 #include <util/atomic.h>
 #include <util/endian.h>
 
+#if COUNT_MMU_OPS
+#define mmu_inc_perf_counter(x) inc_perf_counter(x)
+#else
+#define mmu_inc_perf_counter(x)
+#endif
+
 /* NOTE: we will always check alignment if the flag is set, regardless of whether or not the mmu is present */
 
 /* the memory interface the cpu should use for most of it's memory accesses */
@@ -52,8 +58,12 @@ enum mmu_domain_check_results {
 	CLIENT,
 };
 
+#define TCACHE_PRESENT     0x1
+#define TCACHE_WRITE       0x2
+#define TCACHE_PRIVILEDGED 0x4
+
 struct translation_cache_entry {
-	bool present;
+	unsigned int flags;
 	armaddr_t vaddr;
 	armaddr_t paddr_delta; // difference between the vaddr and paddr (only need an add to come up with the real address)
 	unsigned long hostaddr_delta; // if nonzero, add this to the addr and cast to void * to get the address in the host's memory space	
@@ -75,8 +85,8 @@ struct mmu_state_struct {
 	bool fault;
 
 	struct translation_cache_entry tcache_user_read[NUM_TCACHE_ENTRIES];
-	struct translation_cache_entry tcache_priviledged_read[NUM_TCACHE_ENTRIES];
 	struct translation_cache_entry tcache_user_write[NUM_TCACHE_ENTRIES];
+	struct translation_cache_entry tcache_priviledged_read[NUM_TCACHE_ENTRIES];
 	struct translation_cache_entry tcache_priviledged_write[NUM_TCACHE_ENTRIES];
 };
 
@@ -154,16 +164,16 @@ static void invalidate_tcache(void)
 	int i;
 
 	for(i = 0; i < NUM_TCACHE_ENTRIES; i++)  {
-		mmu.tcache_user_read[i].present = FALSE;
+		mmu.tcache_user_read[i].flags = 0;
 	}
 	for(i = 0; i < NUM_TCACHE_ENTRIES; i++)  {
-		mmu.tcache_priviledged_read[i].present = FALSE;
+		mmu.tcache_priviledged_read[i].flags = 0;
 	}
 	for(i = 0; i < NUM_TCACHE_ENTRIES; i++)  {
-		mmu.tcache_user_write[i].present = FALSE;
+		mmu.tcache_user_write[i].flags = 0;
 	}
 	for(i = 0; i < NUM_TCACHE_ENTRIES; i++)  {
-		mmu.tcache_priviledged_write[i].present = FALSE;
+		mmu.tcache_priviledged_write[i].flags = 0;
 	}
 }
 
@@ -214,8 +224,12 @@ static void add_tcache_entry(armaddr_t vaddr, armaddr_t paddr, bool write, bool 
 	else
 		ent->hostaddr_delta = 0;
 	ent->paddr_delta = paddr - vaddr;
-	ent->present = TRUE;
-	
+	ent->flags = TCACHE_PRESENT;
+	if(write)
+		ent->flags |= TCACHE_WRITE;
+	if(priviledged)
+		ent->flags |= TCACHE_PRIVILEDGED;
+
 //	printf("add_tcache_entry: vaddr 0x%x paddr 0x%x write %d priviledged %d hostaddr_delta 0x%x paddr_delta 0x%x\n",
 //		vaddr, paddr, write, priviledged, ent->hostaddr_delta, ent->paddr_delta);
 }
@@ -345,7 +359,7 @@ static armaddr_t mmu_slow_translate(armaddr_t address, enum mmu_access_type type
 	unsigned int ptable_entry;
 	int domain;
 
-	inc_perf_counter(MMU_SLOW_TRANSLATE);
+	mmu_inc_perf_counter(MMU_SLOW_TRANSLATE);
 
 	if(!mmu.present || !(mmu.flags & MMU_ENABLED_FLAG)) {
 		/* no mmu? create a identity translation cache entry */
@@ -422,9 +436,8 @@ static inline struct translation_cache_entry *mmu_tcache_lookup(armaddr_t addres
 
 	/* do a fast lookup */
 	tcache_ent = lookup_tcache_entry(address, write, priviledged);
-	if(likely(tcache_ent->present)) {
+	if(likely(tcache_ent->flags & TCACHE_PRESENT)) {
 		armaddr_t vaddr_page = address & ~(TCACHE_PAGESIZE-1);
-	
 		if(likely(tcache_ent->vaddr == vaddr_page)) {
 			/* 
 			 * NOTE: permissions are implicitly checked by the fact that the entry exists
@@ -440,76 +453,55 @@ static inline struct translation_cache_entry *mmu_tcache_lookup(armaddr_t addres
 	return NULL;
 }
 
-/* needed for an internal micro-optimization to speed up the common path of mmu_read_*.
- * in the case of actually needing to read memory, if we can call these as the last statement,
- * the compiler can take care of tail recursion and effectively make mmu_read_* a full leaf
- * node, which is a huge win.
- */
-bool sys_read_mem_word_bool(armaddr_t address, word *data)
-{
-	*data = sys_read_mem_word(address);
-	return FALSE;
-}
-
-bool sys_read_mem_halfword_bool(armaddr_t address, word *data)
-{
-	*data = sys_read_mem_halfword(address);
-	return FALSE;
-}
-
-bool sys_read_mem_byte_bool(armaddr_t address, word *data)
-{
-	*data = sys_read_mem_byte(address);
-	return FALSE;
-}
-
-/* the bottom half of the instruction fetch function below. Needed to make mmu_read_instruction_word
- * be a leaf function, which is a huge win for the common case
- */
-bool mmu_read_instruction_word_slow(armaddr_t address, word *data, bool priviledged)
-{
-	/* do a slow lookup which will add a translation cache entry for the next time */
-	address = mmu_slow_translate(address, INSTRUCTION_FETCH, FALSE, priviledged);
-	if(mmu.fault)
-		return TRUE;
-
-	return sys_read_mem_word_bool(address, data);
-}
-
 /* instruction fetches */
 bool mmu_read_instruction_word(armaddr_t address, word *data, bool priviledged)
 {
 	struct translation_cache_entry *tcache_ent;
+
+	mmu_inc_perf_counter(MMU_INS_FETCH);
 
 	/* do a translation lookup */
 	tcache_ent = mmu_tcache_lookup(address, FALSE, priviledged);
 	if(tcache_ent) {
 		if(tcache_ent->hostaddr_delta != 0) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			*data = READ_MEM_WORD((void *)(address + tcache_ent->hostaddr_delta));
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
-			return sys_read_mem_word_bool(address + tcache_ent->paddr_delta, data);
+			mmu_inc_perf_counter(MMU_SLOWPATH);
+			*data = sys_read_mem_word(address);
+			return FALSE;
 		}
 	}
 
-	return mmu_read_instruction_word_slow(address, data, priviledged);
+	/* do a slow lookup which will add a translation cache entry for the next time */
+	address = mmu_slow_translate(address, INSTRUCTION_FETCH, FALSE, priviledged);
+	if(mmu.fault)
+		return TRUE;
+
+	*data = sys_read_mem_word(address);
+	return FALSE;
 }
 
 bool mmu_read_instruction_halfword(armaddr_t address, halfword *data, bool priviledged)
 {
 	struct translation_cache_entry *tcache_ent;
 
+	mmu_inc_perf_counter(MMU_INS_FETCH);
+
 	/* do a translation lookup */
 	tcache_ent = mmu_tcache_lookup(address, FALSE, priviledged);
 	if(tcache_ent) {
 		if(tcache_ent->hostaddr_delta != 0) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			*data = READ_MEM_HALFWORD((void *)(address + tcache_ent->hostaddr_delta));
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
+			mmu_inc_perf_counter(MMU_SLOWPATH);
 			*data = sys_read_mem_halfword(address + tcache_ent->paddr_delta);
 			return FALSE;
 		}
@@ -530,6 +522,8 @@ bool mmu_read_mem_word(armaddr_t address, word *data)
 {
 	MMU_TRACE(10, "mmu_read_mem_word: addr 0x%x, data 0x%x\n", address, data);
 
+	mmu_inc_perf_counter(MMU_READ);
+
 	// alignment check
 	if(unlikely(address & 3)) {
 		if(mmu.flags & MMU_ALIGNMENT_FAULT_FLAG) {
@@ -546,10 +540,12 @@ bool mmu_read_mem_word(armaddr_t address, word *data)
 	if(likely(tcache_ent)) {
 		if(likely(tcache_ent->hostaddr_delta != 0)) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			*data = READ_MEM_WORD((void *)(address + tcache_ent->hostaddr_delta));
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
+			mmu_inc_perf_counter(MMU_SLOWPATH);
 			*data = sys_read_mem_word(address + tcache_ent->paddr_delta);
 			return FALSE;
 		}
@@ -568,6 +564,8 @@ bool mmu_read_mem_halfword(armaddr_t address, halfword *data)
 {
 	MMU_TRACE(10, "mmu_read_mem_halfword: addr 0x%x, data 0x%x\n", address, data);
 
+	mmu_inc_perf_counter(MMU_READ);
+
 	// alignment check
 	if(address & 1) {
 		if(mmu.flags & MMU_ALIGNMENT_FAULT_FLAG) {
@@ -584,10 +582,12 @@ bool mmu_read_mem_halfword(armaddr_t address, halfword *data)
 	if(tcache_ent) {
 		if(tcache_ent->hostaddr_delta != 0) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			*data = READ_MEM_HALFWORD((void *)(address + tcache_ent->hostaddr_delta));
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
+			mmu_inc_perf_counter(MMU_SLOWPATH);
 			*data = sys_read_mem_halfword(address + tcache_ent->paddr_delta);
 			return FALSE;
 		}
@@ -607,16 +607,20 @@ bool mmu_read_mem_byte(armaddr_t address, byte *data)
 {
 	MMU_TRACE(10, "mmu_read_mem_byte: addr 0x%x, data 0x%x\n", address, data);
 
+	mmu_inc_perf_counter(MMU_READ);
+
 	/* do a translation lookup */
 	bool priviledged = arm_in_priviledged();
 	struct translation_cache_entry *tcache_ent = mmu_tcache_lookup(address, FALSE, priviledged);
 	if(tcache_ent) {
 		if(tcache_ent->hostaddr_delta != 0) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			*data = READ_MEM_BYTE((void *)(address + tcache_ent->hostaddr_delta));
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
+			mmu_inc_perf_counter(MMU_SLOWPATH);
 			*data = sys_read_mem_byte(address + tcache_ent->paddr_delta);
 			return FALSE;
 		}
@@ -637,6 +641,8 @@ bool mmu_write_mem_word(armaddr_t address, word data)
 {
 	MMU_TRACE(10, "mmu_write_mem_word: addr 0x%x, data 0x%x\n", address, data);
 
+	mmu_inc_perf_counter(MMU_WRITE);
+
 	// alignment check
 	if(address & 3) {
 		if(mmu.flags & MMU_ALIGNMENT_FAULT_FLAG) {
@@ -653,10 +659,12 @@ bool mmu_write_mem_word(armaddr_t address, word data)
 	if(tcache_ent) {
 		if(tcache_ent->hostaddr_delta != 0) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			WRITE_MEM_WORD((void *)(address + tcache_ent->hostaddr_delta), data);
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
+			mmu_inc_perf_counter(MMU_SLOWPATH);
 			sys_write_mem_word(address + tcache_ent->paddr_delta, data);
 			return FALSE;
 		}
@@ -675,6 +683,8 @@ bool mmu_write_mem_halfword(armaddr_t address, halfword data)
 {
 	MMU_TRACE(10, "mmu_write_mem_halfword: addr 0x%x, data 0x%x\n", address, data);
 
+	mmu_inc_perf_counter(MMU_WRITE);
+
 	// alignment check
 	if(address & 1) {
 		if(mmu.flags & MMU_ALIGNMENT_FAULT_FLAG) {
@@ -691,10 +701,12 @@ bool mmu_write_mem_halfword(armaddr_t address, halfword data)
 	if(tcache_ent) {
 		if(tcache_ent->hostaddr_delta != 0) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			WRITE_MEM_HALFWORD((void *)(address + tcache_ent->hostaddr_delta), data);
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
+			mmu_inc_perf_counter(MMU_SLOWPATH);
 			sys_write_mem_halfword(address + tcache_ent->paddr_delta, data);
 			return FALSE;
 		}
@@ -713,16 +725,20 @@ bool mmu_write_mem_byte(armaddr_t address, byte data)
 {
 	MMU_TRACE(10, "mmu_write_mem_byte: addr 0x%x, data 0x%x\n", address, data);
 
+	mmu_inc_perf_counter(MMU_WRITE);
+
 	/* do a translation lookup */
 	bool priviledged = arm_in_priviledged();
 	struct translation_cache_entry *tcache_ent = mmu_tcache_lookup(address, TRUE, priviledged);
 	if(tcache_ent) {
 		if(tcache_ent->hostaddr_delta != 0) {
 			/* fast path, can read directly from host memory */
+			mmu_inc_perf_counter(MMU_FASTPATH);
 			WRITE_MEM_BYTE((void *)(address + tcache_ent->hostaddr_delta), data);
 			return FALSE;
 		} else {
 			/* slow path, must call into system layer to get memory */
+			mmu_inc_perf_counter(MMU_SLOWPATH);
 			sys_write_mem_byte(address + tcache_ent->paddr_delta, data);
 			return FALSE;
 		}

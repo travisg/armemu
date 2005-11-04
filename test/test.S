@@ -48,6 +48,9 @@ reset: /* arm, in svc mode */
 
 	/* PLD instruction */
 	pld		[r0]
+
+	/* clz instruction */
+	clz		r0, r1
 	
 	/* set up the svc stack */
 	ldr		sp, =svc_stack_top
