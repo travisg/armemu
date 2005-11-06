@@ -43,7 +43,7 @@ static void dump_memory_halfword(armaddr_t address, unsigned int len)
 	int i = 0;
 
 	while(len > 0) {
-		byte data = sys_read_mem_halfword(address);
+		halfword data = sys_read_mem_halfword(address);
 
 		if((i % 16 == 0)) {
 			if(i != 0)
@@ -55,7 +55,7 @@ static void dump_memory_halfword(armaddr_t address, unsigned int len)
 
 		i++;
 		len--;
-		address++;
+		address += 2;
 	}
 	printf("\n");
 }
@@ -65,7 +65,7 @@ static void dump_memory_word(armaddr_t address, unsigned int len)
 	int i = 0;
 
 	while(len > 0) {
-		byte data = sys_read_mem_word(address);
+		word data = sys_read_mem_word(address);
 
 		if((i % 16 == 0)) {
 			if(i != 0)
@@ -77,7 +77,7 @@ static void dump_memory_word(armaddr_t address, unsigned int len)
 
 		i++;
 		len--;
-		address++;
+		address += 4;
 	}
 	printf("\n");
 }
