@@ -127,18 +127,24 @@ static word debug_get_put(armaddr_t address, word data, int size, int put)
 		case DEBUG_SET_TRACELEVEL_MMU:
 			TRACE_MMU_LEVEL = data;
 			return 0;
-#endif
+#endif			
         default:
             return 0;
         }
     } else {
         switch(address) {
-        case 0: 
+        case DEBUG_STDIN: 
             if(read(0, &x, 1) == 1){
                 return x;
             } else {
                 return -1;
             }
+#if COUNT_CYCLES
+		case DEBUG_CYCLE_COUNT:
+			return get_cycle_count();
+#endif
+		case DEBUG_INS_COUNT:
+			return get_instruction_count();
         default:
             return 0;
         }

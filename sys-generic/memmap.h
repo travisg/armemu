@@ -53,6 +53,20 @@
 #define PIC_REGS_BASE     (CONSOLE_REGS_BASE + CONSOLE_REGS_SIZE)
 #define PIC_REGS_SIZE     (4*1024*1024)
 
+	/* Mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
+#define PIC_MASK          (PIC_REGS_BASE + 0)
+	/* each bit corresponds to the current status of the interrupt line */
+#define PIC_STAT          (PIC_REGS_BASE + 4)
+	/* one bit set for the current interrupt. */
+    /* write one to any bit to clear it's status if it's edge triggered. */
+#define PIC_CURRENT_BIT   (PIC_REGS_BASE + 8)
+	/* holds the current interrupt number, check PIC_CURRENT_BIT to see if something is pending */
+#define PIC_CURRENT_NUM   (PIC_REGS_BASE + 12)
+
+	/* interrupt map */
+#define INT_KEYBOARD 0
+#define PIC_MAX_INT 32
+
 /* debug interface */
 #define DEBUG_REGS_BASE (PIC_REGS_BASE + PIC_REGS_SIZE)
 #define DEBUG_REGS_SIZE (4*1024*1024)
@@ -75,18 +89,7 @@
 #define DEBUG_SET_TRACELEVEL_SYS (DEBUG_REGS_BASE + 40)
 #define DEBUG_SET_TRACELEVEL_MMU (DEBUG_REGS_BASE + 44)
 
-	/* Mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
-#define PIC_MASK          (PIC_REGS_BASE + 0)
-	/* each bit corresponds to the current status of the interrupt line */
-#define PIC_STAT          (PIC_REGS_BASE + 4)
-	/* one bit set for the current interrupt. */
-    /* write one to any bit to clear it's status if it's edge triggered. */
-#define PIC_CURRENT_BIT   (PIC_REGS_BASE + 8)
-	/* holds the current interrupt number, check PIC_CURRENT_BIT to see if something is pending */
-#define PIC_CURRENT_NUM   (PIC_REGS_BASE + 12)
-
-	/* interrupt map */
-#define INT_KEYBOARD 0
-#define PIC_MAX_INT 32
+#define DEBUG_CYCLE_COUNT (DEBUG_REGS_BASE + 48)
+#define DEBUG_INS_COUNT (DEBUG_REGS_BASE + 52)
 
 #endif
