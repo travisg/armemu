@@ -1001,17 +1001,17 @@ static inline __ALWAYS_INLINE void uop_load_multiple(struct uop *op)
 		}
 	}
 
+	// writeback
+	if(op->flags & UOPLSMFLAGS_WRITEBACK) {
+		temp_addr2 = temp_addr + op->load_store_multiple.writeback_offset;
+		put_reg(op->load_store_multiple.base_reg, temp_addr2);
+	}
+
 	// see if we need to move spsr into cpsr
 	if(op->flags & UOPLSMFLAGS_LOAD_CPSR) {
 		reg_t spsr = cpu.spsr; // save it here because cpu.spsr might change in set_cpu_mode()
 		set_cpu_mode(cpu.spsr & PSR_MODE_MASK);
 		cpu.cpsr = spsr;
-	}
-
-	// writeback
-	if(op->flags & UOPLSMFLAGS_WRITEBACK) {
-		temp_addr2 = temp_addr + op->load_store_multiple.writeback_offset;
-		put_reg(op->load_store_multiple.base_reg, temp_addr2);
 	}
 
 #if COUNT_CYCLES
