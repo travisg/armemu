@@ -23,45 +23,65 @@
 #ifndef __MEMMAP_H
 #define __MEMMAP_H
 
+#define MEMBANK_SIZE (4*1024*1024)
+
 /* some helpful macros */
 #define REG(x) ((volatile unsigned int *)(x))
 #define REG_H(x) ((volatile unsigned short *)(x))
 #define REG_B(x) ((volatile unsigned char *)(x))
 
 /* memory map of our generic arm system */
+// XXX make more dynamic
 #define MAINMEM_BASE 0x0
-#define MAINMEM_SIZE (4*1024*1024)
+#define MAINMEM_SIZE (MEMBANK_SIZE)
 
 /* peripherals are all mapped here */
 #define PERIPHERAL_BASE   (0xf0000000)
 
+/* system info */
+#define SYSINFO_REGS_BASE (PERIPHERAL_BASE)
+#define SYSINFO_REGS_SIZE MEMBANK_SIZE
+#define SYSINFO_FEATURES  (SYSINFO_REGS_BASE + 0)
+#define SYSINFO_FEATURE_DISPLAY 0x00000001
+#define SYSINFO_FEATURE_CONSOLE 0x00000002
+
+    /* a write to this register latches the current emulator system time, so the next two regs can be read atomically */
+#define SYSINFO_TIME_LATCH (SYSINFO_REGS_BASE + 4)
+    /* gettimeofday() style time values */
+#define SYSINFO_TIME_SECS  (SYSINFO_REGS_BASE + 8)
+#define SYSINFO_TIME_USECS (SYSINFO_REGS_BASE + 12)
+
 /* display */
-#define DISPLAY_BASE      (PERIPHERAL_BASE)
-#define DISPLAY_SIZE      (4*1024*1024)
+#define DISPLAY_BASE      (SYSINFO_REGS_BASE + SYSINFO_REGS_SIZE)
+#define DISPLAY_SIZE      MEMBANK_SIZE
 #define DISPLAY_FRAMEBUFFER DISPLAY_BASE
 #define DISPLAY_REGS_BASE (DISPLAY_BASE + DISPLAY_SIZE)
-#define DISPLAY_REGS_SIZE (4*1024*1024)
+#define DISPLAY_REGS_SIZE MEMBANK_SIZE
 	/* no display regs for now */
 
 /* console (keyboard controller */
 #define CONSOLE_REGS_BASE (DISPLAY_REGS_BASE + DISPLAY_REGS_SIZE)
-#define CONSOLE_REGS_SIZE (4*1024*1024)
+#define CONSOLE_REGS_SIZE MEMBANK_SIZE
 #define KYBD_STAT         (CONSOLE_REGS_BASE + 0)
 #define KYBD_DATA         (CONSOLE_REGS_BASE + 4)
 
 /* interrupt controller */
 #define PIC_REGS_BASE     (CONSOLE_REGS_BASE + CONSOLE_REGS_SIZE)
-#define PIC_REGS_SIZE     (4*1024*1024)
+#define PIC_REGS_SIZE     MEMBANK_SIZE
 
-	/* Mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
+    /* Current vector mask */
 #define PIC_MASK          (PIC_REGS_BASE + 0)
+    /* Mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
+#define PIC_MASK_LATCH        (PIC_REGS_BASE + 4)
+	/* Unmask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
+#define PIC_UNMASK_LATCH        (PIC_REGS_BASE + 8)
 	/* each bit corresponds to the current status of the interrupt line */
-#define PIC_STAT          (PIC_REGS_BASE + 4)
+#define PIC_STAT          (PIC_REGS_BASE + 12)
 	/* one bit set for the current interrupt. */
     /* write one to any bit to clear it's status if it's edge triggered. */
-#define PIC_CURRENT_BIT   (PIC_REGS_BASE + 8)
+#define PIC_CURRENT_BIT   (PIC_REGS_BASE + 16)
 	/* holds the current interrupt number, check PIC_CURRENT_BIT to see if something is pending */
-#define PIC_CURRENT_NUM   (PIC_REGS_BASE + 12)
+#define PIC_CURRENT_NUM   (PIC_REGS_BASE + 20)
 
 	/* interrupt map */
 #define INT_KEYBOARD 0
@@ -69,7 +89,7 @@
 
 /* debug interface */
 #define DEBUG_REGS_BASE (PIC_REGS_BASE + PIC_REGS_SIZE)
-#define DEBUG_REGS_SIZE (4*1024*1024)
+#define DEBUG_REGS_SIZE MEMBANK_SIZE
 #define DEBUG_STDOUT (DEBUG_REGS_BASE + 0) /* writes to this register are sent through to stdout */
 #define DEBUG_STDIN  (DEBUG_REGS_BASE + 0) /* reads from this register return the contents of stdin
                                             * or -1 if no data is pending */

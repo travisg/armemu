@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 
 #include <SDL/SDL.h>
 
@@ -44,21 +45,40 @@ typedef struct _memory_map {
 
 /* global system state */
 struct sys {
+	/* features */
+	uint features;
+
+	/* current latched system time */
+	struct timeval current_time;
+
 	/* main memory map */
 	memory_map memmap[MEMORY_BANK_COUNT];
 } sys;
 
 // function decls
 static word unhandled_get_put(armaddr_t address, word data, int size, int put);
+static int initialize_sysinfo_regs(void);
 
-static int has_feature(const char *name, int def)
+static bool has_sys_feature(const char *name, bool def)
 {
     const char *tmp = get_config_key_string("system", name, def ? "yes" : "no");
-    if(!strcasecmp(tmp,"yes")) return 1;
-    if(atoi(tmp) != 0) return 1;
+
+    if(!strcasecmp(tmp,"yes"))
+		return TRUE;
+    if(atoi(tmp) != 0)
+		return TRUE;
     return 0;
 }
     
+static void load_feature_config(void)
+{
+	sys.features = 0;
+
+	// load system feature config
+	sys.features |= has_sys_feature("display", TRUE) ? SYSINFO_FEATURE_DISPLAY : 0;
+	sys.features |= has_sys_feature("console", TRUE) ? SYSINFO_FEATURE_CONSOLE : 0;
+}
+
 int initialize_system(void)
 {
 	unsigned int i;
@@ -67,10 +87,16 @@ int initialize_system(void)
 	initialize_cpu(get_config_key_string("cpu", "core", "arm7tdmi"));
 
 	memset(&sys, 0, sizeof(sys));
+
+	// load the feature set
+	load_feature_config();
 	
 	// create the default memory map
 	for(i=0; i < MEMORY_BANK_COUNT; i++)
 		sys.memmap[i].get_put = &unhandled_get_put;
+
+	// add the sysinfo registers
+	initialize_sysinfo_regs();
 
 	// initialize the interrupt controller
 	initialize_pic();
@@ -78,16 +104,17 @@ int initialize_system(void)
 	// initialize the main memory
 	initialize_mainmem(get_config_key_string("rom", "file", NULL));
 
-    if(has_feature("display", 1)){
+    if (sys.features & SYSINFO_FEATURE_DISPLAY){
             // initialize the display
         initialize_display();
     }
 
-    if(has_feature("console", 1)){
+    if (sys.features & SYSINFO_FEATURE_CONSOLE){
             // initialize the console (keyboard)
         initialize_console();
     }
 
+	// debug device
     initialize_debug();
     
 	return 0;
@@ -200,3 +227,31 @@ void *sys_get_mem_ptr(armaddr_t address)
 	return sys.memmap[ADDR_TO_BANK(address)].get_ptr(address);
 }
 
+/* sysinfo register handlers */
+
+static word sysinfo_get_put(armaddr_t address, word data, int size, int put)
+{
+	switch(address) {
+	case SYSINFO_FEATURES:
+		return sys.features;
+	case SYSINFO_TIME_LATCH:
+		if (put) {
+			gettimeofday(&sys.current_time, NULL);
+		}
+		break;
+	case SYSINFO_TIME_SECS:
+		return sys.current_time.tv_sec;
+	case SYSINFO_TIME_USECS:
+		return sys.current_time.tv_usec;
+	}
+
+	return 0;
+}
+
+static int initialize_sysinfo_regs(void)
+{
+    install_mem_handler(SYSINFO_REGS_BASE, SYSINFO_REGS_SIZE,
+                        sysinfo_get_put, NULL);
+
+	return 0;
+}

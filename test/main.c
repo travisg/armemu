@@ -32,6 +32,12 @@ int main(void)
 
 	puts("console initialized\n");
 
+	puts("emulator features:\n");
+	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_DISPLAY)
+		puts("\tdisplay\n");
+	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_CONSOLE)
+		puts("\tconsole\n");
+
 	read_cpu_id();
 
 	mmu_init();
@@ -68,9 +74,24 @@ int main(void)
 	}
 }
 
+void debug_dump_memory_words(void *mem, int len)
+{
+	*REG(DEBUG_MEMDUMPADDR) = (unsigned int)mem;
+	*REG(DEBUG_MEMDUMPLEN) = len;
+	*REG(DEBUG_MEMDUMP_WORD) = 1;
+}
+
 void irq_handler(void)
 {
 	int vector;
+
+#if 0
+	*REG(SYSINFO_TIME_LATCH) = 0; // latch the system time
+	unsigned int  time[2];
+	time[0] = *REG(SYSINFO_TIME_SECS);
+	time[1] = *REG(SYSINFO_TIME_USECS);
+	debug_dump_memory_words(time, 2);
+#endif
 
 	if(*REG(PIC_CURRENT_BIT) == 0)
 		return;

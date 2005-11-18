@@ -199,46 +199,52 @@ static word pic_regs_get_put(armaddr_t address, word data, int size, int put)
 	SDL_LockMutex(pic.mutex);
 
 	switch(address) {
-			/* mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
-		case PIC_MASK:
-			if(put) {
-				pic.vector_mask = data;
-				val = 0;
-				check_after_mask_change();
-			} else {
-				val = pic.vector_mask;
-			}
-			break;
-
-			/* each bit corresponds to the current status of the interrupt line */
-		case PIC_STAT:
-			val = pic.vector_active;
-			break;
-
-			/* one bit set for the current interrupt. */
-		    /* write one to any bit to clear its status if it's edge triggered. */
-		case PIC_CURRENT_BIT:
-			if(put) {
-				/* deassert any edge interrupt by writing 1s to this register */
-				deassert_edge(data);
-				val = 0;
-			} else {
-				/* read the current interrupt as a bit set. curr_int is only valid when we're active */
-				if(pic.active) {
-					val = (1 << pic.curr_int);
-				} else {
-					val = 0;
-				}
-			}
-			break;
-
-			/* holds the current interrupt number, check PIC_CURRENT_BIT to see if something is pending */
-		case PIC_CURRENT_NUM:
-			val = pic.curr_int;
-			break;
-
-		default:
+		/* read/write to the current interrupt mask */
+	case PIC_MASK_LATCH: /* 1s are latched into the current mask */
+		data |= pic.vector_mask;
+		goto set_mask;
+	case PIC_UNMASK_LATCH: /* 1s are latched as 0s in the current mask */
+		data = pic.vector_mask & ~data;
+set_mask:
+	case PIC_MASK:
+		if(put) {
+			pic.vector_mask = data;
 			val = 0;
+			check_after_mask_change();
+		} else {
+			val = pic.vector_mask;
+		}
+		break;
+
+		/* each bit corresponds to the current status of the interrupt line */
+	case PIC_STAT:
+		val = pic.vector_active;
+		break;
+
+		/* one bit set for the current interrupt. */
+		/* write one to any bit to clear its status if it's edge triggered. */
+	case PIC_CURRENT_BIT:
+		if(put) {
+			/* deassert any edge interrupt by writing 1s to this register */
+			deassert_edge(data);
+			val = 0;
+		} else {
+			/* read the current interrupt as a bit set. curr_int is only valid when we're active */
+			if(pic.active) {
+				val = (1 << pic.curr_int);
+			} else {
+				val = 0;
+			}
+		}
+		break;
+
+		/* holds the current interrupt number, check PIC_CURRENT_BIT to see if something is pending */
+	case PIC_CURRENT_NUM:
+		val = pic.curr_int;
+		break;
+
+	default:
+		val = 0;
 	}
 
 	SDL_UnlockMutex(pic.mutex);
