@@ -1,4 +1,5 @@
 #include "display.h"
+#include "debug.h"
 #include "text.h"
 
 static unsigned char FONT[] = {
@@ -180,7 +181,7 @@ int initialize_text(void)
 	return 0;
 }
 
-void puts(char *str)
+void puts(const char *str)
 {
 	while(*str) {
 		putchar(*str);

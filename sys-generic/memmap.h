@@ -65,8 +65,17 @@
 #define KYBD_STAT         (CONSOLE_REGS_BASE + 0)
 #define KYBD_DATA         (CONSOLE_REGS_BASE + 4)
 
+/* programmable timer */
+#define PIT_REGS_BASE     (CONSOLE_REGS_BASE + CONSOLE_REGS_SIZE)
+#define PIT_REGS_SIZE     MEMBANK_SIZE
+#define PIT_STAT          (PIT_REGS_BASE + 0) // status bit
+#define PIT_CLEAR         (PIT_REGS_BASE + 4) // a nonzero write clears any pending timer
+#define PIT_INTERVAL      (PIT_REGS_BASE + 8) // set the countdown interval, and what the interval is reset to if periodic
+#define PIT_START_ONESHOT (PIT_REGS_BASE + 12) // a nonzero write starts a oneshot countdown
+#define PIT_START_PERIODIC (PIT_REGS_BASE + 16) // a nonzero write starts a periodic countdown
+
 /* interrupt controller */
-#define PIC_REGS_BASE     (CONSOLE_REGS_BASE + CONSOLE_REGS_SIZE)
+#define PIC_REGS_BASE     (PIT_REGS_BASE + PIT_REGS_SIZE)
 #define PIC_REGS_SIZE     MEMBANK_SIZE
 
     /* Current vector mask */
@@ -84,7 +93,8 @@
 #define PIC_CURRENT_NUM   (PIC_REGS_BASE + 20)
 
 	/* interrupt map */
-#define INT_KEYBOARD 0
+#define INT_PIT      0
+#define INT_KEYBOARD 1
 #define PIC_MAX_INT 32
 
 /* debug interface */

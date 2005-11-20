@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include <SDL/SDL.h>
 
@@ -100,6 +100,9 @@ int initialize_system(void)
 
 	// initialize the interrupt controller
 	initialize_pic();
+
+	// initialize the timer
+	initialize_pit();
 
 	// initialize the main memory
 	initialize_mainmem(get_config_key_string("rom", "file", NULL));

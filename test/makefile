@@ -5,7 +5,7 @@ TARGETELF := test.elf
 TOOLCHAIN_PATH := /usr/local/armdev-4.0.0/bin
 
 #VFP := -Wa,-mfpu=vfp
-CFLAGS := -mthumb-interwork -O0 -g -mcpu=arm926ej-s -msoft-float $(VFP)
+CFLAGS := -mthumb-interwork -O2 -g -mcpu=arm926ej-s -fno-builtin -msoft-float $(VFP)
 
 LIBGCC := $(shell $(TOOLCHAIN_PATH)/arm-elf-gcc $(CFLAGS) -print-libgcc-file-name)
 
@@ -14,6 +14,7 @@ OBJS := \
 	main.o \
 	mmu.o \
 	console.o \
+	debug.o \
 	display.o \
 	text.o \
 	utils.o \

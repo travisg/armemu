@@ -24,8 +24,8 @@ int main(void)
 	
 	cpufunc();
 
-	for(i = 0xff; i >= 0; i -= 0x10) 
-		clear_display(i | (i<<8) | (i<<16) | (i<<24));
+//	for(i = 0xff; i >= 0; i -= 0x10) 
+//		clear_display(i | (i<<8) | (i<<16) | (i<<24));
 	clear_display(0);
 	initialize_text();
 	set_text_color(0xffffffff, 0);
@@ -45,6 +45,10 @@ int main(void)
 	puts("enabling interrupts\n");
 	arm_enable_ints();
 
+	puts("setting timer\n");
+	*REG(PIT_INTERVAL) = 500;
+	*REG(PIT_START_PERIODIC) = 1;
+
 	puts("keyboard test:\n");
 	c = 'a';
 	for(;;) {
@@ -52,14 +56,6 @@ int main(void)
 
 		/* do some cpu intensive stuff for a bit */
 		cpufunc();
-
-#if 0
-		/* send a repeating char pattern to stdout */
-		c++;
-		if(c > 'z')
-			c = 'a';
-		*(unsigned int *)DEBUG_STDOUT = c;
-#endif
 
 		/* see if a keyboard interrupt went off */
 		if(read_keyboard(&key) >= 0)
@@ -74,31 +70,42 @@ int main(void)
 	}
 }
 
-void debug_dump_memory_words(void *mem, int len)
-{
-	*REG(DEBUG_MEMDUMPADDR) = (unsigned int)mem;
-	*REG(DEBUG_MEMDUMPLEN) = len;
-	*REG(DEBUG_MEMDUMP_WORD) = 1;
-}
-
 void irq_handler(void)
 {
 	int vector;
 
 #if 0
 	*REG(SYSINFO_TIME_LATCH) = 0; // latch the system time
-	unsigned int  time[2];
-	time[0] = *REG(SYSINFO_TIME_SECS);
-	time[1] = *REG(SYSINFO_TIME_USECS);
-	debug_dump_memory_words(time, 2);
+	static unsigned int lasttime; // in us
+	unsigned int time;
+
+	unsigned int rawtime[2];
+	rawtime[0] = *REG(SYSINFO_TIME_SECS);
+	rawtime[1] = *REG(SYSINFO_TIME_USECS);
+
+	time = ((rawtime[0] * 1000000) + rawtime[1]);
+	
+	unsigned int delta = time - lasttime;
+	debug_dump_memory_words(&delta, 1);
+
+	lasttime = time;
 #endif
 
 	if(*REG(PIC_CURRENT_BIT) == 0)
 		return;
 
 	vector = *REG(PIC_CURRENT_NUM);
-	if(vector == INT_KEYBOARD) {
+	switch(vector) {
+	case INT_PIT:
+		dputs("irq timer\n");
+		break;
+	case INT_KEYBOARD:
+		dputs("irq keyboard\n");
 		keyboard_int_handler();
+		break;
+	default:
+		puts("unknown irq\n");
+		break;
 	}
 	
 	/* edge trigger ack */

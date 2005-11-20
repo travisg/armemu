@@ -44,6 +44,8 @@ static struct pic {
 
 static void go_active(int vector)
 {
+//	printf("go_active: vector %d\n", vector);
+
 	pic.active = 1;
 	pic.curr_int = vector;
 	raise_irq();
@@ -51,6 +53,8 @@ static void go_active(int vector)
 
 static void go_inactive(void)
 {
+//	printf("go_inactive\n");
+
 	pic.active = 0;
 	pic.curr_int = 0;
 	lower_irq();
@@ -111,6 +115,9 @@ static void check_after_mask_change(void)
 
 static void deassert_edge(uint32_t mask)
 {
+//	printf("deassert_edge: mask 0x%x, pic.vector_edge 0x%x, pic.vector_active 0x%x, pic.active %d, pic.curr_int %d\n", 
+//		   mask, pic.vector_edge, pic.vector_active, pic.active, pic.curr_int);
+
 	/* deassert all active edge interrupts covered by this mask */
 	mask &= pic.vector_edge;
 	pic.vector_active &= ~mask;
@@ -119,7 +126,7 @@ static void deassert_edge(uint32_t mask)
 	 * find a new active vector.
 	 */
 	if(pic.active) {
-		if(pic.vector_active & (1<<pic.curr_int)) {
+		if(BIT(pic.vector_active, pic.curr_int) == 0) {
 			/* we need a new active vector */
 			if(check_for_inactive())
 				return; /* we went inactive because there was nothing else ready to run */

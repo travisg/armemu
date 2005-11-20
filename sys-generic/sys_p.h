@@ -35,6 +35,9 @@ int pic_trigger_edge(int vector);   /* edge triggered interrupts */
 int pic_assert_level(int vector);   /* level triggered interrupts use these */
 int pic_deassert_level(int vector);
 
+// timer
+int initialize_pit(void);
+
 // display
 int initialize_display(void);
 

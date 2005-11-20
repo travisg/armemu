@@ -5,5 +5,6 @@ OBJS	+= \
 	$(LOCALDIR)/display.o \
 	$(LOCALDIR)/mainmem.o \
 	$(LOCALDIR)/pic.o \
+	$(LOCALDIR)/pit.o \
 	$(LOCALDIR)/debug.o \
 	$(LOCALDIR)/sys.o
