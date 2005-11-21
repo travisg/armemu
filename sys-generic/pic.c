@@ -95,22 +95,20 @@ static void check_after_mask_change(void)
 {
 	int i;
 
-	if(pic.active) {
-		/* if we're already active, see if the new mask masks out our active vector */	
-		// XXX what should happen here? should we change the currently active vector?
-	} else {
-		/* see if a newly unmasked vector makes the system go active */
-		uint32_t ready_vectors = pic.vector_active & ~pic.vector_mask;
-		if(ready_vectors != 0) { 
-			for(i=0; i < PIC_MAX_INT; i++) {
-				if(ready_vectors & (1<<i)) {
-					/* we're going active */
-					go_active(i);
-					break;
-				}
+	/* see if a newly unmasked vector makes the system go active */
+	uint32_t ready_vectors = pic.vector_active & ~pic.vector_mask;
+	if(ready_vectors != 0) { 
+		for(i=0; i < PIC_MAX_INT; i++) {
+			if(ready_vectors & (1<<i)) {
+				/* we're going active */
+				go_active(i);
+				return;
 			}
 		}
 	}
+
+	/* we must be going offline */
+	go_inactive();
 }
 
 static void deassert_edge(uint32_t mask)
@@ -120,6 +118,8 @@ static void deassert_edge(uint32_t mask)
 
 	/* deassert all active edge interrupts covered by this mask */
 	mask &= pic.vector_edge;
+	if (mask == 0)
+		return;
 	pic.vector_active &= ~mask;
 
 	/* now see if the active vector just got cleared, and if so
