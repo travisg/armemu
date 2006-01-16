@@ -89,12 +89,14 @@ int dump_mainmem(void)
 	return 0;
 }
 
-int initialize_mainmem(const char *rom_file)
+int initialize_mainmem(const char *rom_file, long load_offset)
 {
 	// allocate some ram
 	mainmem.size = MAINMEM_SIZE;
 	mainmem.base = MAINMEM_BASE;
 	mainmem.mem = calloc(1, mainmem.size);	
+
+	printf("sys: initializing mainmem from rom file %s, offset %ld\n", rom_file, load_offset);
 
 	// put it in the memory map
 	install_mem_handler(mainmem.base, mainmem.size, &mainmem_get_put, &mainmem_get_ptr);
@@ -103,7 +105,7 @@ int initialize_mainmem(const char *rom_file)
 	if(rom_file) {
 		FILE *fp = fopen(rom_file, "r");
 		if(fp) {
-			fread(mainmem.mem, 1, mainmem.size, fp);
+			fread(mainmem.mem + load_offset, 1, mainmem.size, fp);
 			fclose(fp);
 		}
 	}

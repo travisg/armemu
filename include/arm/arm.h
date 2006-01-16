@@ -130,6 +130,10 @@ struct cpu_struct {
 	struct uop_codepage *curr_cp;
 	struct uop_codepage *codepage_hash[CODEPAGE_HASHSIZE];
 
+	// free list of codepage structures
+	struct uop_codepage *free_cp_arm;
+	struct uop_codepage *free_cp_thumb;
+
 	// truth table of the arm conditions
 	unsigned short condition_table[16];
 
@@ -422,5 +426,8 @@ void lower_fiq(void);
 void signal_data_abort(armaddr_t addr);
 void signal_prefetch_abort(armaddr_t addr);
 int process_pending_exceptions(void);
+
+/* codepage maintenance */
+void flush_all_codepages(void); /* throw away all cached instructions */
 
 #endif

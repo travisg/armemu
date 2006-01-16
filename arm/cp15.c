@@ -126,10 +126,18 @@ static void op_cp15_reg_transfer(word ins, void *data)
 				mmu_set_register(MMU_FAULT_ADDRESS_REG, get_reg(Rd));
 				goto done;
 			}	
-		case 7: // data cache registers, we dont emulate
+		case 7: // cache registers, we only sort of emulate the instruction cache
+			if (!L) {
+				switch(CRm) {
+					case 7:
+					case 5: // various forms of ICache invalidation
+						flush_all_codepages();
+						goto done;
+				}
+			}
 			goto donothing;
 		case 8: // tlb flush
-			goto donothing;
+			goto unsupported;
 		case 9: // cache lockdown
 			goto donothing;
 		case 10: // tlb lockdown

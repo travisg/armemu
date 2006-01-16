@@ -105,7 +105,8 @@ int initialize_system(void)
 	initialize_pit();
 
 	// initialize the main memory
-	initialize_mainmem(get_config_key_string("rom", "file", NULL));
+	initialize_mainmem(get_config_key_string("rom", "file", NULL), 
+			atol(get_config_key_string("rom", "address", "0")));
 
     if (sys.features & SYSINFO_FEATURE_DISPLAY){
             // initialize the display

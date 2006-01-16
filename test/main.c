@@ -74,6 +74,9 @@ void irq_handler(void)
 {
 	int vector;
 
+	/* test the codepage removal */
+	arm_invalidate_i_cache();
+
 #if 0
 	*REG(SYSINFO_TIME_LATCH) = 0; // latch the system time
 	static unsigned int lasttime; // in us

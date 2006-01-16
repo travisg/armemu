@@ -1,8 +1,7 @@
 TARGET := test.bin
 TARGETELF := test.elf
 
-#TOOLCHAIN_PATH := /usr/local/armdev-3.4.3/bin
-TOOLCHAIN_PATH := /usr/local/armdev-4.0.0/bin
+TOOLCHAIN_PATH := /usr/local/arm-elf/bin
 
 #VFP := -Wa,-mfpu=vfp
 CFLAGS := -mthumb-interwork -O2 -g -mcpu=arm926ej-s -fno-builtin -msoft-float $(VFP)

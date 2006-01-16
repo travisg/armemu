@@ -27,7 +27,7 @@
 
 // main memory
 int dump_mainmem(void);
-int initialize_mainmem(const char *rom_file);
+int initialize_mainmem(const char *rom_file, long load_offset);
 
 // interrupt controller
 int initialize_pic(void);

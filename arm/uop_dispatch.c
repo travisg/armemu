@@ -236,6 +236,82 @@ const char *uop_opcode_to_str(int opcode)
 #undef OP_TO_STR
 }
 
+/* codepage cache */
+static void free_codepage(struct uop_codepage *cp)
+{
+	UOP_TRACE(7, "free_codepage: cp %p, thumb %d, address 0x%x\n", cp, cp->thumb, cp->address);
+	if (cp->thumb) {
+		cp->next = cpu.free_cp_thumb;
+		cpu.free_cp_thumb = cp;
+	} else {
+		cp->next = cpu.free_cp_arm;
+		cpu.free_cp_arm = cp;
+	}
+}
+
+#define CP_PREALLOCATE 16
+#define ARM_CP_SIZE (sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_ARM + 1))
+#define THUMB_CP_SIZE (sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_THUMB + 1))
+
+static struct uop_codepage *alloc_codepage_arm(void)
+{
+	struct uop_codepage *cp;
+	
+	if (cpu.free_cp_arm == NULL) {
+		int i;
+
+		uint8_t *cp_buf = malloc(ARM_CP_SIZE * CP_PREALLOCATE);
+		if (cp_buf == NULL)
+			return NULL;
+
+		for (i=0; i < CP_PREALLOCATE; i++) {
+			cp = (struct uop_codepage *)(cp_buf + (i * ARM_CP_SIZE));
+			cp->thumb = FALSE;
+			cp->pc_inc = 4;
+			cp->pc_shift = 2;
+			free_codepage(cp);			
+		}
+	} 
+
+	ASSERT(cpu.free_cp_arm != NULL);
+	cp = cpu.free_cp_arm;
+	cpu.free_cp_arm = cp->next;
+	cp->next = NULL;
+
+	ASSERT(cp->thumb == FALSE);
+
+	return cp;
+}
+
+static struct uop_codepage *alloc_codepage_thumb(void)
+{
+	struct uop_codepage *cp;
+
+	if (cpu.free_cp_thumb == NULL) {
+		int i;
+
+		uint8_t *cp_buf = malloc(THUMB_CP_SIZE * CP_PREALLOCATE);
+		if (cp_buf == NULL)
+			return NULL;
+
+		for (i=0; i < CP_PREALLOCATE; i++) {
+			cp = (struct uop_codepage *)(cp_buf + (i * THUMB_CP_SIZE));
+			cp->thumb = TRUE;
+			cp->pc_inc = 2;
+			cp->pc_shift = 1;
+			free_codepage(cp);			
+		}
+	} 
+
+	ASSERT(cpu.free_cp_thumb != NULL);
+	cp = cpu.free_cp_thumb;
+	cpu.free_cp_thumb = cp->next;
+	cp->next = NULL;
+
+	ASSERT(cp->thumb == TRUE);
+	return cp;
+}
+
 #define PC_TO_CPPC(pc) &cpu.curr_cp->ops[((pc) % MMU_PAGESIZE) >> (cpu.curr_cp->pc_shift)];
 
 static inline unsigned int codepage_hash(armaddr_t address, bool thumb)
@@ -270,15 +346,12 @@ static bool load_codepage_arm(armaddr_t pc, armaddr_t cp_addr, bool priviledged,
 	struct uop_codepage *cp;	
 	int i;
 
-	cp = malloc(sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_ARM + 1));
+	cp = alloc_codepage_arm();
 	if(!cp)
 		panic_cpu("could not allocate new codepage!\n");
 
 	// load and fill in the default codepage
 	cp->address = cp_addr;
-	cp->thumb = FALSE;
-	cp->pc_inc = 4;
-	cp->pc_shift = 2;
 	for(i=0; i < NUM_CODEPAGE_INS_ARM; i++) {
 		cp->ops[i].opcode = DECODE_ME_ARM;
 		cp->ops[i].cond = COND_AL;
@@ -301,15 +374,12 @@ static bool load_codepage_thumb(armaddr_t pc, armaddr_t cp_addr, bool priviledge
 	struct uop_codepage *cp;	
 	int i;
 
-	cp = malloc(sizeof(struct uop_codepage) + sizeof(struct uop) * (NUM_CODEPAGE_INS_THUMB + 1));
+	cp = alloc_codepage_thumb();
 	if(!cp)
 		panic_cpu("could not allocate new codepage!\n");
 
 	// load and fill in the default codepage
 	cp->address = cp_addr;
-	cp->thumb = TRUE;
-	cp->pc_inc = 2;
-	cp->pc_shift = 1;
 	for(i=0; i < NUM_CODEPAGE_INS_THUMB; i++) {
 		halfword hword;
 		
@@ -342,7 +412,7 @@ static bool load_codepage(armaddr_t pc, bool thumb, bool priviledged, struct uop
 
 	// load and fill in the appropriate codepage
 	if(thumb)
-		ret =load_codepage_thumb(pc, cp_addr, priviledged, &cp, &last_ins_index);
+		ret = load_codepage_thumb(pc, cp_addr, priviledged, &cp, &last_ins_index);
 	else
 		ret = load_codepage_arm(pc, cp_addr, priviledged, &cp, &last_ins_index);
 	if(ret)
@@ -387,6 +457,27 @@ static bool set_codepage(armaddr_t pc)
 	ASSERT(cpu.curr_cp != NULL);
 	cpu.cp_pc = PC_TO_CPPC(cpu.pc);
 	return FALSE;
+}
+
+void flush_all_codepages(void)
+{
+	int i;
+	struct uop_codepage *cp;
+
+	/* XXX make this smarter */
+	for (i=0; i < CODEPAGE_HASHSIZE; i++) {
+		cp = cpu.codepage_hash[i];
+
+		while (cp != NULL) {
+			struct uop_codepage *temp = cp;
+			cp = cp->next;
+			free_codepage(temp);
+		}
+		cpu.codepage_hash[i] = NULL;
+	}
+
+	/* force a reload of the current codepage */
+	cpu.curr_cp = NULL;
 }
 
 static inline __ALWAYS_INLINE void uop_decode_me_arm(struct uop *op) 
