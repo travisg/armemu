@@ -2449,11 +2449,11 @@ static inline __ALWAYS_INLINE void uop_multiply_long(struct uop *op)
 	// signed or unsigned multiply
 	// XXX is this correct
 	if(op->flags & UOPMULFLAGS_SIGNED) {
-		int64_t result = (int64_t)temp_word * (int64_t)temp_word2;
+		int64_t result = (int64_t)(int)temp_word * (int)temp_word2;
 		reslo = result;
-		reshi = (uint64_t)result >> 32;
+		reshi = result >> 32;
 	} else {
-		uint64_t result = temp_word * temp_word2;
+		uint64_t result = (uint64_t)temp_word * temp_word2;
 		reslo = result;
 		reshi = result >> 32;
 	}
