@@ -2421,14 +2421,16 @@ static inline __ALWAYS_INLINE void uop_multiply(struct uop *op)
 #if COUNT_CYCLES
 	// cycle count
 	if(get_core() <= ARM9) {
-		if((temp_word >> 8) == 0 || (temp_word >> 8) == 0x00ffffff)
+		int signed_word = temp_word;
+
+		if ((signed_word >> 8) == 0 || (signed_word >> 8) == -1)
 			add_to_perf_counter(CYCLE_COUNT, 1);
-		else if((temp_word >> 16) == 0 || (temp_word >> 16) == 0x0000ffff)
+		else if ((signed_word >> 16) == 0 || (signed_word >> 16) == -1)
 			add_to_perf_counter(CYCLE_COUNT, 2);
-		else if((temp_word >> 24) == 0 || (temp_word >> 24) == 0x000000ff)
+		else if ((signed_word >> 24) == 0 || (signed_word >> 24) == -1)
 			add_to_perf_counter(CYCLE_COUNT, 3);
 	} else /* if(get_core() == ARM9e) */ {
-		/* ARM9e core can do the multiply in 2 instructions, with an interlock */
+		/* ARM9e core can do the multiply in 2 cycles, with an interlock */
 		add_to_perf_counter(CYCLE_COUNT, 1);
 		// XXX schedule interlock here
 	}
@@ -2441,6 +2443,7 @@ static inline __ALWAYS_INLINE void uop_multiply(struct uop *op)
 static inline __ALWAYS_INLINE void uop_multiply_long(struct uop *op) 
 {
 	word reslo, reshi;
+	uint64_t result;
 
 	// get the first two operands
 	word temp_word = get_reg(op->mull.source_reg);
@@ -2449,21 +2452,21 @@ static inline __ALWAYS_INLINE void uop_multiply_long(struct uop *op)
 	// signed or unsigned multiply
 	// XXX is this correct
 	if(op->flags & UOPMULFLAGS_SIGNED) {
-		int64_t result = (int64_t)(int)temp_word * (int)temp_word2;
-		reslo = result;
-		reshi = result >> 32;
+		result = (int64_t)(int)temp_word * (int)temp_word2;
 	} else {
-		uint64_t result = (uint64_t)temp_word * temp_word2;
-		reslo = result;
-		reshi = result >> 32;
+		result = (uint64_t)temp_word * temp_word2;
 	}
 
 	// accumulate
 	if(op->flags & UOPMULFLAGS_ACCUMULATE) {
-		panic_cpu("uop_multiply_long: accumulate unimplemented\n");
+		uint64_t acc = get_reg(op->mull.desthi_reg);
+		acc = (acc << 32) | get_reg(op->mull.destlo_reg);
+		result += acc;
 	}
 
 	// store the results
+	reslo = result;
+	reshi = result >> 32;
 	put_reg(op->mull.destlo_reg, reslo);
 	put_reg(op->mull.desthi_reg, reshi);
 
@@ -2473,22 +2476,20 @@ static inline __ALWAYS_INLINE void uop_multiply_long(struct uop *op)
 		set_condition(PSR_CC_ZERO, (reslo | reshi) == 0);
 	}
 
-#if 0
 #if COUNT_CYCLES
 	// cycle count
 	if(get_core() <= ARM9) {
-		if((temp_word >> 8) == 0 || (temp_word >> 8) == 0x00ffffff)
-			add_to_perf_counter(CYCLE_COUNT, 1);
-		else if((temp_word >> 16) == 0 || (temp_word >> 16) == 0x0000ffff)
+		if ((temp_word >> 8) == 0)
 			add_to_perf_counter(CYCLE_COUNT, 2);
-		else if((temp_word >> 24) == 0 || (temp_word >> 24) == 0x000000ff)
+		else if ((temp_word >> 16) == 0)
 			add_to_perf_counter(CYCLE_COUNT, 3);
+		else if ((temp_word >> 24) == 0)
+			add_to_perf_counter(CYCLE_COUNT, 4);
 	} else /* if(get_core() == ARM9e) */ {
-		/* ARM9e core can do the multiply in 2 instructions, with an interlock */
-		add_to_perf_counter(CYCLE_COUNT, 1);
+		/* ARM9e core can do the multiply in 3 cycles, with an interlock */
+		add_to_perf_counter(CYCLE_COUNT, 2);
 		// XXX schedule interlock here
 	}
-#endif
 #endif
 #if COUNT_ARM_OPS
 	inc_perf_counter(OP_MUL);
