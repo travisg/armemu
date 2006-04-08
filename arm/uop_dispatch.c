@@ -57,11 +57,11 @@
 			arith_op = 1; \
 			break; \
 		case AOP_SBC: /* SBC */ \
-			result = do_add(a, -b, get_condition(PSR_CC_CARRY) ? -1 : 0, &carry, &ovl); \
+			result = do_add(a, ~b, get_condition(PSR_CC_CARRY) ? 1 : 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
 		case AOP_RSC: /* RSC */ \
-			result = do_add(b, -a, get_condition(PSR_CC_CARRY) ? -1 : 0, &carry, &ovl); \
+			result = do_add(b, ~a, get_condition(PSR_CC_CARRY) ? 1 : 0, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
 		case AOP_TST: /* TST */ \
@@ -114,13 +114,13 @@
 			result = a + b; \
 			break; \
 		case AOP_ADC: /* ADC */ \
-			result = get_condition(PSR_CC_CARRY) ? a + b + 1 : a + b; \
+			result = a + b + (get_condition(PSR_CC_CARRY) ? 1 : 0); \
 			break; \
 		case AOP_SBC: /* SBC */ \
-			result = get_condition(PSR_CC_CARRY) ? a - b - 1 : a - b; \
+			result = a + ~b + (get_condition(PSR_CC_CARRY) ? 1: 0); \
 			break; \
 		case AOP_RSC: /* RSC */ \
-			result = get_condition(PSR_CC_CARRY) ? b - a - 1 : b - a; \
+			result = b + ~a + (get_condition(PSR_CC_CARRY) ? 1: 0); \
 			break; \
 		case AOP_TST: /* TST */ \
 			result = a & b; \
@@ -1912,7 +1912,7 @@ static inline __ALWAYS_INLINE void uop_sbc_reg_s(struct uop *op)
 
 	a = get_reg(op->simple_dp_reg.source_reg);
 	b = get_reg(op->simple_dp_reg.source2_reg);
-	result = do_add(a, -b, get_condition(PSR_CC_CARRY) ? -1 : 0, &carry, &ovl);
+	result = do_add(a, ~b, get_condition(PSR_CC_CARRY) ? 1 : 0, &carry, &ovl);
 	put_reg(op->simple_dp_reg.dest_reg, result);
 
 	// set flags on the result
