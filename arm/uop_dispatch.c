@@ -41,11 +41,11 @@
 			result = a ^ b; \
 			break; \
 		case AOP_SUB: /* SUB */ \
-			result = do_add(a, -b, 0, &carry, &ovl); \
+			result = do_add(a, ~b, 1, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
 		case AOP_RSB: /* RSB */ \
-			result = do_add(b, -a, 0, &carry, &ovl); \
+			result = do_add(b, ~a, 1, &carry, &ovl); \
 			arith_op = 1; \
 			break; \
 		case AOP_ADD: /* ADD */ \
@@ -73,7 +73,7 @@
 			Rd_writeback = 0; \
 			break; \
 		case AOP_CMP: /* CMP */ \
-			result = do_add(a, -b, 0, &carry, &ovl); \
+			result = do_add(a, ~b, 1, &carry, &ovl); \
 			Rd_writeback = 0; \
 			arith_op = 1; \
 			break; \
@@ -1711,7 +1711,7 @@ static inline __ALWAYS_INLINE void uop_cmp_imm_s(struct uop *op)
 	word result;
 	
 	// subtract the immediate from the source register
-	result = do_add(get_reg(op->simple_dp_imm.source_reg), -(op->simple_dp_imm.immediate), 0, &carry, &ovl);
+	result = do_add(get_reg(op->simple_dp_imm.source_reg), ~(op->simple_dp_imm.immediate), 1, &carry, &ovl);
 
 	// set flags on the result
 	set_NZ_condition(result);
@@ -1728,9 +1728,9 @@ static inline __ALWAYS_INLINE void uop_cmp_reg_s(struct uop *op)
 {
 	int carry, ovl;
 	word result;
-	
+
 	// subtract the source2 reg from the source register
-	result = do_add(get_reg(op->simple_dp_reg.source_reg), -(get_reg(op->simple_dp_reg.source2_reg)), 0, &carry, &ovl);
+	result = do_add(get_reg(op->simple_dp_reg.source_reg), ~(get_reg(op->simple_dp_reg.source2_reg)), 1, &carry, &ovl);
 
 	// set flags on the result
 	set_NZ_condition(result);
@@ -1890,7 +1890,7 @@ static inline __ALWAYS_INLINE void uop_sub_reg_s(struct uop *op)
 
 	a = get_reg(op->simple_dp_reg.source_reg);
 	b = get_reg(op->simple_dp_reg.source2_reg);
-	result = do_add(a, -b, 0, &carry, &ovl);
+	result = do_add(a, ~b, 1, &carry, &ovl);
 	put_reg_nopc(op->simple_dp_reg.dest_reg, result);
 
 	// set flags on the result
@@ -2372,7 +2372,7 @@ static inline __ALWAYS_INLINE void uop_neg_reg_s(struct uop *op)
 	word result;
 
 	b = get_reg(op->simple_dp_reg.source2_reg);
-	result = do_add(0, -b, 0, &carry, &ovl);
+	result = do_add(0, ~b, 1, &carry, &ovl);
 
 	set_condition(PSR_CC_CARRY, carry);
 	set_condition(PSR_CC_OVL, ovl);
