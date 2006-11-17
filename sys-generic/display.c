@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <assert.h>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
@@ -34,9 +35,9 @@
 #include <util/endian.h>
 #include <util/atomic.h>
 
-#define SCREEN_X 		640
-#define SCREEN_Y 		480
-#define SCREEN_DEPTH 	32
+#define SCREEN_X 		320
+#define SCREEN_Y 		240
+#define SCREEN_DEPTH 	16
 
 static struct display {
 	// SDL surface structure
@@ -44,6 +45,7 @@ static struct display {
 	
 	// framebuffer backing store
 	byte *fb;
+	SDL_Surface *fbsurface;
 	
 	// dirty flag
 	int dirty;
@@ -103,14 +105,13 @@ static word display_get_put(armaddr_t address, word data, int size, int put)
 // main display loop
 static int display_thread_entry(void *args)
 {
-	int x, y;
+	int i, endoffset;
 	word *src;
 	word *dest;
-	int pitch;
 	SDL_Surface *surface = display.screen;
 
 	for(;;) {
-		SDL_Delay(50);
+		SDL_Delay(100);
 	
 		// is the surface dirty?
 		if(atomic_set(&display.dirty, 0)) {			
@@ -119,16 +120,14 @@ static int display_thread_entry(void *args)
 			
 			src = (word *)display.fb;
 			dest = (word *)surface->pixels;
-			pitch = surface->pitch / sizeof(word);
-			for(y = 0; y < SCREEN_Y; y++) {
-				for(x = 0; x < SCREEN_X; x++) {
-					*dest = READ_MEM_WORD(src);
-					src++;
-					dest++;
-				}
-				dest += pitch - SCREEN_X; // the SDL surface may have additional dead pixels at the end of the line
-			}
-		
+			
+			i = 0;
+			endoffset = (SCREEN_Y * (surface->pitch / (SCREEN_DEPTH>>3)));
+			do {
+				dest[i] = src[i];
+				i++;
+			} while(i < endoffset );
+			
 			SDL_UnlockSurface(surface);
 			SDL_Flip(surface);
 		}	
