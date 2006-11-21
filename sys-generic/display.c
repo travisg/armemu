@@ -132,6 +132,8 @@ static int display_thread_entry(void *args)
 			SDL_Flip(surface);
 		}	
 	}
+
+	return 0;
 }
 
 int initialize_display(void)
