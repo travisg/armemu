@@ -2741,12 +2741,12 @@ int uop_dispatch_loop(void)
 	for(;;) {
 		struct uop *op;
 
-		UOP_TRACE(10, "uop_dispatch_loop: start of new cycle\n");
+		UOP_TRACE(10, "\nUOP: start of new cycle\n");
 
 		// in the last instruction we wrote something else into r[PC], so sync it with
 		// the real program counter cpu.pc
 		if(unlikely(cpu.r15_dirty)) {
-			UOP_TRACE(9, "r15 dirty\n");
+			UOP_TRACE(9, "UOP: r15 dirty\n");
 			cpu.r15_dirty = FALSE;
 
 			if(cpu.curr_cp) {
@@ -2770,7 +2770,7 @@ int uop_dispatch_loop(void)
 
 		/* see if we are off the end of a codepage, or the codepage was removed out from underneath us */
 		if(unlikely(cpu.curr_cp == NULL)) {
-			UOP_TRACE(7, "curr_cp == NULL, setting new codepage\n");
+			UOP_TRACE(7, "UOP: curr_cp == NULL, setting new codepage\n");
 			if(set_codepage(cpu.pc))
 				continue; // MMU translation error reading it
 		}
@@ -2804,6 +2804,7 @@ int uop_dispatch_loop(void)
 
 		/* check to see if we should execute it */
 		if(unlikely(!check_condition(op->cond))) {
+			UOP_TRACE(8, "UOP: opcode not executed due to condition 0x%x\n", op->cond);
 #if COUNT_ARM_OPS
 			inc_perf_counter(OP_SKIPPED_CONDITION);
 #endif
@@ -2953,25 +2954,25 @@ int uop_dispatch_loop(void)
 				uop_lsr_imm_s(op);
 				break;
 			case LSR_REG:	// logical right shift by register
-				uop_lsr_reg_s(op);
+				uop_lsr_reg(op);
 				break;
 			case LSR_REG_S:	// logical right shift by register, sets full conditions
 				uop_lsr_reg_s(op);
 				break;
 			case ASR_IMM:	// arithmetic right shift by immediate
-				uop_asr_imm_s(op);
+				uop_asr_imm(op);
 				break;
 			case ASR_IMM_S:	// arithmetic right shift by immediate, sets full conditions
 				uop_asr_imm_s(op);
 				break;
 			case ASR_REG:	// arithmetic right shift by register
-				uop_asr_reg_s(op);
+				uop_asr_reg(op);
 				break;
 			case ASR_REG_S:	// arithmetic right shift by register, sets full conditions
 				uop_asr_reg_s(op);
 				break;
 			case ROR_REG:	// rotate right by register
-				uop_ror_reg_s(op);
+				uop_ror_reg(op);
 				break;
 			case ROR_REG_S:	// rotate right by register, sets full conditions
 				uop_ror_reg_s(op);
