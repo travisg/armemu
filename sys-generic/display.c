@@ -35,9 +35,9 @@
 #include <util/endian.h>
 #include <util/atomic.h>
 
-#define SCREEN_X 		320
-#define SCREEN_Y 		240
-#define SCREEN_DEPTH 	16
+#define SCREEN_X 		640
+#define SCREEN_Y 		480
+#define SCREEN_DEPTH 	32
 
 static struct display {
 	// SDL surface structure
