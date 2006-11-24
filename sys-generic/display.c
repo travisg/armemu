@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 Travis Geiselbrecht
+ * Copyright (c) 2005-2006 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -29,19 +29,26 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
 
+#include <config.h>
 #include <arm/arm.h>
 #include <sys/sys.h>
 #include "sys_p.h"
 #include <util/endian.h>
 #include <util/atomic.h>
 
-#define SCREEN_X 		640
-#define SCREEN_Y 		480
-#define SCREEN_DEPTH 	32
+#define DEFAULT_SCREEN_X 		640
+#define DEFAULT_SCREEN_Y 		480
+#define DEFAULT_SCREEN_DEPTH 	32
 
 static struct display {
 	// SDL surface structure
 	SDL_Surface *screen;
+
+	// geometry
+	uint screen_x;
+	uint screen_y;
+	uint screen_depth;
+	uint screen_size;
 	
 	// framebuffer backing store
 	byte *fb;
@@ -105,7 +112,6 @@ static word display_get_put(armaddr_t address, word data, int size, int put)
 // main display loop
 static int display_thread_entry(void *args)
 {
-	int i, endoffset;
 	word *src;
 	word *dest;
 	SDL_Surface *surface = display.screen;
@@ -121,13 +127,8 @@ static int display_thread_entry(void *args)
 			src = (word *)display.fb;
 			dest = (word *)surface->pixels;
 			
-			i = 0;
-			endoffset = (SCREEN_Y * (surface->pitch / (SCREEN_DEPTH>>3)));
-			do {
-				dest[i] = src[i];
-				i++;
-			} while(i < endoffset );
-			
+			memcpy(dest, src, display.screen_size);
+		
 			SDL_UnlockSurface(surface);
 			SDL_Flip(surface);
 		}	
@@ -140,6 +141,40 @@ int initialize_display(void)
 {
 	memset(&display, 0, sizeof(display));
 
+	// set up default geometry
+	display.screen_x = DEFAULT_SCREEN_X;
+	display.screen_y = DEFAULT_SCREEN_Y;
+	display.screen_depth = DEFAULT_SCREEN_DEPTH;
+
+	// see if any config variables override it
+	const char *str;
+	str = get_config_key_string("display", "width", NULL);
+	if (str)
+		display.screen_x = strtoul(str, NULL, 10);
+	str = get_config_key_string("display", "height", NULL);
+	if (str)
+		display.screen_y = strtoul(str, NULL, 10);
+	str = get_config_key_string("display", "depth", NULL);
+	if (str)
+		display.screen_depth = strtoul(str, NULL, 10);
+
+	// sanity check geometry
+	if (display.screen_x == 0 || display.screen_x > 4096) {
+		SYS_TRACE(0, "sys: display width out of range %d\n", display.screen_x);
+		exit(1);
+	}
+	if (display.screen_y == 0 || display.screen_y > 4096) {
+		SYS_TRACE(0, "sys: display height out of range %d\n", display.screen_y);
+		exit(1);
+	}
+	if (display.screen_depth != 16 && display.screen_depth != 32) {
+		SYS_TRACE(0, "sys: invalid display depth %d\n", display.screen_depth);
+		exit(1);
+	}
+
+	// calculate size 
+	display.screen_size = display.screen_x * display.screen_y * (display.screen_depth / 8);
+
 	// create and register a memory range for the framebuffer
 	display.fb = (byte *)calloc(DISPLAY_SIZE, 1);
 	install_mem_handler(DISPLAY_BASE, DISPLAY_SIZE, &display_get_put, NULL);
@@ -148,7 +183,11 @@ int initialize_display(void)
 	install_mem_handler(DISPLAY_REGS_BASE, DISPLAY_REGS_SIZE, &display_regs_get_put, NULL);
 
 	// create the emulator window
-	display.screen = SDL_SetVideoMode(SCREEN_X, SCREEN_Y, SCREEN_DEPTH, SDL_HWSURFACE|SDL_DOUBLEBUF);
+	display.screen = SDL_SetVideoMode(display.screen_x, display.screen_y, display.screen_depth, SDL_HWSURFACE|SDL_DOUBLEBUF);
+	if (!display.screen) {
+		SYS_TRACE(0, "sys: error creating SDL surface\n");
+		exit(1);
+	}
 	
 	SYS_TRACE(1, "created screen: w %d h %d pitch %d\n", display.screen->w, display.screen->h, display.screen->pitch);
 
