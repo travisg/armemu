@@ -37,6 +37,8 @@ int main(void)
 		puts("\tdisplay\n");
 	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_CONSOLE)
 		puts("\tconsole\n");
+	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_NETWORK)
+		puts("\tnetwork\n");
 
 	read_cpu_id();
 
@@ -105,6 +107,10 @@ void irq_handler(void)
 	case INT_KEYBOARD:
 		dputs("irq keyboard\n");
 		keyboard_int_handler();
+		break;
+	case INT_NET:
+		dputs("irq network\n");
+		network_int_handler();
 		break;
 	default:
 		puts("unknown irq\n");

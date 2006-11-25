@@ -1,5 +1,5 @@
 #!/bin/sh
 
-make &&
-make testbin &&
-./build-generic/armemu
+make -j2 &&
+make testbin -j2 &&
+sudo ./build-generic/armemu

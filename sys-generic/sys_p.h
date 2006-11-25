@@ -46,6 +46,9 @@ int initialize_console(void);
 void console_keydown(SDLKey key);
 void console_keyup(SDLKey key);
 
+// network
+int initialize_network(void);
+
 // debug  
 int initialize_debug(void);
 

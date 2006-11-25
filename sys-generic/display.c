@@ -103,7 +103,7 @@ static word display_get_put(armaddr_t address, word data, int size, int put)
 	if(put)
 		atomic_or(&display.dirty, 1);
 
-	SYS_TRACE(5, "sys: display_get_put at 0x%08x, data 0x%08x, size %d, put %d\n", 
+	SYS_TRACE(6, "sys: display_get_put at 0x%08x, data 0x%08x, size %d, put %d\n", 
 		address, data, size, put);
 
 	return data;

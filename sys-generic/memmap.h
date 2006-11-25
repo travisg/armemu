@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 Travis Geiselbrecht
+ * Copyright (c) 2005-2006 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -44,6 +44,7 @@
 #define SYSINFO_FEATURES  (SYSINFO_REGS_BASE + 0)
 #define SYSINFO_FEATURE_DISPLAY 0x00000001
 #define SYSINFO_FEATURE_CONSOLE 0x00000002
+#define SYSINFO_FEATURE_NETWORK 0x00000004
 
     /* a write to this register latches the current emulator system time, so the next two regs can be read atomically */
 #define SYSINFO_TIME_LATCH (SYSINFO_REGS_BASE + 4)
@@ -95,6 +96,7 @@
 	/* interrupt map */
 #define INT_PIT      0
 #define INT_KEYBOARD 1
+#define INT_NET      2
 #define PIC_MAX_INT 32
 
 /* debug interface */
@@ -121,5 +123,21 @@
 
 #define DEBUG_CYCLE_COUNT (DEBUG_REGS_BASE + 48)
 #define DEBUG_INS_COUNT (DEBUG_REGS_BASE + 52)
+
+/* network interface */
+#define NET_REGS_BASE (DEBUG_REGS_BASE + DEBUG_REGS_SIZE)
+#define NET_REGS_SIZE MEMBANK_SIZE
+
+#define NET_BUF_LEN 2048
+
+#define NET_HEAD	(NET_REGS_BASE + 0)
+#define NET_TAIL	(NET_REGS_BASE + 4)
+#define NET_SEND	(NET_REGS_BASE + 8)		/* writes to this register sends whatever is in the out buf */
+#define NET_SEND_LEN (NET_REGS_BASE + 12)	/* length of packet to send */
+
+#define NET_OUT_BUF (NET_REGS_BASE + NET_BUF_LEN)
+
+#define NET_IN_BUFS_COUNT		32
+#define NET_IN_BUFS	(NET_REGS_BASE + NET_BUF_LEN*2)
 
 #endif

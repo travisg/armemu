@@ -10,6 +10,7 @@ OBJS := \
 	test.o \
 	main.o \
 	mmu.o \
+	network.o \
 	console.o \
 	debug.o \
 	display.o \

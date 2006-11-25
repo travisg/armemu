@@ -77,6 +77,7 @@ static void load_feature_config(void)
 	// load system feature config
 	sys.features |= has_sys_feature("display", TRUE) ? SYSINFO_FEATURE_DISPLAY : 0;
 	sys.features |= has_sys_feature("console", TRUE) ? SYSINFO_FEATURE_CONSOLE : 0;
+	sys.features |= has_sys_feature("network", TRUE) ? SYSINFO_FEATURE_NETWORK : 0;
 }
 
 int initialize_system(void)
@@ -116,6 +117,11 @@ int initialize_system(void)
     if (sys.features & SYSINFO_FEATURE_CONSOLE){
             // initialize the console (keyboard)
         initialize_console();
+    }
+
+    if (sys.features & SYSINFO_FEATURE_NETWORK){
+            // initialize the network (via tun/tap)
+        initialize_network();
     }
 
 	// debug device
