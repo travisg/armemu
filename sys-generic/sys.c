@@ -75,9 +75,9 @@ static void load_feature_config(void)
 	sys.features = 0;
 
 	// load system feature config
-	sys.features |= has_sys_feature("display", TRUE) ? SYSINFO_FEATURE_DISPLAY : 0;
-	sys.features |= has_sys_feature("console", TRUE) ? SYSINFO_FEATURE_CONSOLE : 0;
-	sys.features |= has_sys_feature("network", TRUE) ? SYSINFO_FEATURE_NETWORK : 0;
+	sys.features |= has_sys_feature("console", FALSE) ? SYSINFO_FEATURE_CONSOLE : 0;
+	sys.features |= has_sys_feature("display", FALSE) ? SYSINFO_FEATURE_DISPLAY : 0;
+	sys.features |= has_sys_feature("network", FALSE) ? SYSINFO_FEATURE_NETWORK : 0;
 }
 
 int initialize_system(void)
