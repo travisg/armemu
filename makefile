@@ -35,7 +35,6 @@ CFLAGS += -fno-pic -mregnames
 CFLAGS += -mcpu=7450
 endif
 ifeq ($(ARCH),ppc64)
-CFLAGS += -DASM_LEADING_DOTS=1
 CFLAGS += -mregnames -fno-pic
 CFLAGS += -mcpu=970
 endif
