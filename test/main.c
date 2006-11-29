@@ -96,13 +96,11 @@ void irq_handler(void)
 	lasttime = time;
 #endif
 
-	if(*REG(PIC_CURRENT_BIT) == 0)
-		return;
-
 	vector = *REG(PIC_CURRENT_NUM);
 	switch(vector) {
 	case INT_PIT:
 		dputs("irq timer\n");
+		*REG(PIT_CLEAR_INT) = 1;
 		break;
 	case INT_KEYBOARD:
 		dputs("irq keyboard\n");
@@ -115,10 +113,10 @@ void irq_handler(void)
 	default:
 		puts("unknown irq\n");
 		break;
+	case 0xffffffff:
+		/* false alarm */
+		break;
 	}
-	
-	/* edge trigger ack */
-	*REG(PIC_CURRENT_BIT) = *REG(PIC_CURRENT_BIT);
 }
 
 void fiq_handler(void)

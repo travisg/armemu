@@ -31,7 +31,6 @@ int initialize_mainmem(const char *rom_file, long load_offset);
 
 // interrupt controller
 int initialize_pic(void);
-int pic_trigger_edge(int vector);   /* edge triggered interrupts */
 int pic_assert_level(int vector);   /* level triggered interrupts use these */
 int pic_deassert_level(int vector);
 

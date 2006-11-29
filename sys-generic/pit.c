@@ -39,25 +39,28 @@ static struct pit {
 
 	reg_t curr_interval;
 	bool periodic;
+	reg_t status;
 } pit;
 
 static Uint32 pit_callback(Uint32 interval, void *param)
 {
-	SDL_LockMutex(pit.mutex);
+	SYS_TRACE(5, "pit_callback: interval %d\n", interval);
 
-//	printf("pit_callback: interval %d\n", interval);
+	SDL_LockMutex(pit.mutex);
 
 	// make sure there is still an active timer
 	if (pit.curr_timer == NULL)
 		goto exit;
 
-	// edge trigger an interrupt
-	pic_trigger_edge(INT_PIT);
+	// level trigger an interrupt
+	pit.status |= PIT_STATUS_INT_PEND;
+	pic_assert_level(INT_PIT);
 
 	if (!pit.periodic) {
 		// cancel the timer
 		SDL_RemoveTimer(pit.curr_timer);
 		pit.curr_timer = NULL;
+		pit.status &= ~PIT_STATUS_ACTIVE;
 	}
 
   exit:
@@ -70,7 +73,7 @@ static word pit_regs_get_put(armaddr_t address, word data, int size, int put)
 {
 	word val = 0;
 
-	SYS_TRACE(1, "sys: pit_regs_get_put at 0x%08x, data 0x%08x, size %d, put %d\n", 
+	SYS_TRACE(5, "sys: pit_regs_get_put at 0x%08x, data 0x%08x, size %d, put %d\n", 
 		address, data, size, put);
 
 	if(size < 4)
@@ -79,7 +82,8 @@ static word pit_regs_get_put(armaddr_t address, word data, int size, int put)
 	SDL_LockMutex(pit.mutex);
 
 	switch(address) {
-	case PIT_STAT: // status bit
+	case PIT_STATUS: // status bit
+		val = pit.status;
 		break;
 	case PIT_INTERVAL:
 		if (put && data != 0) {
@@ -107,11 +111,19 @@ static word pit_regs_get_put(armaddr_t address, word data, int size, int put)
 			pit.curr_timer = NULL;
 		}
 		pit.curr_timer = SDL_AddTimer(pit.curr_interval, &pit_callback, NULL);
+		pit.status |= PIT_STATUS_ACTIVE;
 		break;
 	case PIT_CLEAR:
 		if (put && data != 0 && pit.curr_timer != NULL) {
 			SDL_RemoveTimer(pit.curr_timer);
 			pit.curr_timer = NULL;
+			pit.status &= ~PIT_STATUS_ACTIVE;
+		}
+		break;
+	case PIT_CLEAR_INT:
+		if (put && data != 0) {
+			pit.status &= ~PIT_STATUS_INT_PEND;
+			pic_deassert_level(INT_PIT);
 		}
 		break;
 	}

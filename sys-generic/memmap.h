@@ -69,28 +69,33 @@
 /* programmable timer */
 #define PIT_REGS_BASE     (CONSOLE_REGS_BASE + CONSOLE_REGS_SIZE)
 #define PIT_REGS_SIZE     MEMBANK_SIZE
-#define PIT_STAT          (PIT_REGS_BASE + 0) // status bit
+#define PIT_STATUS        (PIT_REGS_BASE + 0) // status bit
 #define PIT_CLEAR         (PIT_REGS_BASE + 4) // a nonzero write clears any pending timer
-#define PIT_INTERVAL      (PIT_REGS_BASE + 8) // set the countdown interval, and what the interval is reset to if periodic
-#define PIT_START_ONESHOT (PIT_REGS_BASE + 12) // a nonzero write starts a oneshot countdown
-#define PIT_START_PERIODIC (PIT_REGS_BASE + 16) // a nonzero write starts a periodic countdown
+#define PIT_CLEAR_INT     (PIT_REGS_BASE + 8) // a nonzero write clears the pending interrupt
+#define PIT_INTERVAL      (PIT_REGS_BASE + 12) // set the countdown interval, and what the interval is reset to if periodic
+#define PIT_START_ONESHOT (PIT_REGS_BASE + 16) // a nonzero write starts a oneshot countdown
+#define PIT_START_PERIODIC (PIT_REGS_BASE + 20) // a nonzero write starts a periodic countdown
+
+#define PIT_STATUS_ACTIVE    0x1
+#define PIT_STATUS_INT_PEND  0x2
 
 /* interrupt controller */
 #define PIC_REGS_BASE     (PIT_REGS_BASE + PIT_REGS_SIZE)
 #define PIC_REGS_SIZE     MEMBANK_SIZE
 
-    /* Current vector mask */
+    /* Current vector mask, read-only */
 #define PIC_MASK          (PIC_REGS_BASE + 0)
     /* Mask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
-#define PIC_MASK_LATCH        (PIC_REGS_BASE + 4)
+#define PIC_MASK_LATCH    (PIC_REGS_BASE + 4)
 	/* Unmask any of the 32 interrupt vectors by writing a 1 in the appropriate bit */
-#define PIC_UNMASK_LATCH        (PIC_REGS_BASE + 8)
+#define PIC_UNMASK_LATCH  (PIC_REGS_BASE + 8)
 	/* each bit corresponds to the current status of the interrupt line */
 #define PIC_STAT          (PIC_REGS_BASE + 12)
-	/* one bit set for the current interrupt. */
-    /* write one to any bit to clear it's status if it's edge triggered. */
+	/* one bit set for the highest priority non-masked active interrupt */
 #define PIC_CURRENT_BIT   (PIC_REGS_BASE + 16)
-	/* holds the current interrupt number, check PIC_CURRENT_BIT to see if something is pending */
+	/* holds the current interrupt number of the highest priority non-masked active interrupt, 
+	 * or 0xffffffff if no interrupt is active
+	 */
 #define PIC_CURRENT_NUM   (PIC_REGS_BASE + 20)
 
 	/* interrupt map */
@@ -130,14 +135,13 @@
 
 #define NET_BUF_LEN 2048
 
-#define NET_HEAD	(NET_REGS_BASE + 0)
-#define NET_TAIL	(NET_REGS_BASE + 4)
+#define NET_HEAD	(NET_REGS_BASE + 0)		/* current next buffer the hardware will write to */
+#define NET_TAIL	(NET_REGS_BASE + 4)		/* currently selected input buffer */
 #define NET_SEND	(NET_REGS_BASE + 8)		/* writes to this register sends whatever is in the out buf */
 #define NET_SEND_LEN (NET_REGS_BASE + 12)	/* length of packet to send */
-
 #define NET_OUT_BUF (NET_REGS_BASE + NET_BUF_LEN)
 
-#define NET_IN_BUFS_COUNT		32
-#define NET_IN_BUFS	(NET_REGS_BASE + NET_BUF_LEN*2)
+#define NET_IN_BUF_LEN (NET_REGS_BASE + 16)	/* length of the currently selected in buffer, via tail register */
+#define NET_IN_BUF	(NET_REGS_BASE + NET_BUF_LEN*2)
 
 #endif

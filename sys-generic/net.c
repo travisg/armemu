@@ -39,7 +39,7 @@
 #include <util/atomic.h>
 
 #define PACKET_LEN 2048
-#define PACKET_QUEUE_LEN 32
+#define PACKET_QUEUE_LEN 32	/* must be power of 2 */
 
 static struct network {
 	int fd;
@@ -49,7 +49,8 @@ static struct network {
 
 	uint out_packet_len;
 	uint8_t out_packet[PACKET_LEN];
-	uint8_t packets[PACKET_QUEUE_LEN][PACKET_LEN];
+	uint in_packet_len[PACKET_QUEUE_LEN];
+	uint8_t in_packet[PACKET_QUEUE_LEN][PACKET_LEN];
 } *network;
 
 static word buffer_read(const void *_ptr, uint offset, int size)
@@ -124,7 +125,11 @@ static word network_regs_get_put(armaddr_t address, word data, int size, int put
 			}
 			val = network->out_packet_len;
 			break;
-		case NET_OUT_BUF...(NET_IN_BUFS - 1):
+		case NET_IN_BUF_LEN:
+			/* read/only */
+			val = network->in_packet_len[network->tail];
+			break;
+		case NET_OUT_BUF...(NET_OUT_BUF + NET_BUF_LEN - 1):
 			offset = address - NET_OUT_BUF;
 			if (put) {
 				val = buffer_write(network->out_packet, offset, data, size);
@@ -132,11 +137,11 @@ static word network_regs_get_put(armaddr_t address, word data, int size, int put
 				val = buffer_read(network->out_packet, offset, size);
 			}
 			break;
-		case NET_IN_BUFS...(NET_IN_BUFS + PACKET_LEN * PACKET_QUEUE_LEN - 1):
-			offset = address - NET_IN_BUFS;
+		case NET_IN_BUF...(NET_IN_BUF + NET_BUF_LEN - 1):
+			offset = address - NET_IN_BUF;
 
 			/* in buffers are read/only */
-			val = buffer_read(network->packets, offset, size);
+			val = buffer_read(network->in_packet[network->tail], offset, size);
 			break;
 		default:
 			SYS_TRACE(0, "sys: unhandled network address 0x%08x\n", address);
@@ -150,11 +155,13 @@ static int network_thread(void *args)
 {
 	for (;;) {
 		ssize_t ret;
-		ret = read(network->fd, network->packets[network->head], PACKET_LEN);
+		ret = read(network->fd, network->in_packet[network->head], PACKET_LEN);
 		if (ret > 0) {
 			SYS_TRACE(1, "sys: got network data, size %d, head %d, tail %d\n", ret, network->head, network->tail);
 
-			network->head++;
+			network->in_packet_len[network->head] = ret;
+
+			network->head = (network->head + 1) % PACKET_QUEUE_LEN;
 			pic_assert_level(INT_NET);
 		}
 	}

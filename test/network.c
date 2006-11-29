@@ -2,24 +2,20 @@
 #include "debug.h"
 #include "memmap.h"
 
-static const void *index_to_inbuf(unsigned int index)
-{
-	return (const void *)(NET_IN_BUFS + NET_BUF_LEN * index);
-}
-
 void network_int_handler(void)
 {
 	int tail;
+	unsigned int len;
 	void *inbuf;
-
-	puts("network int handler\n");
 
 	tail = *REG(NET_TAIL);
 	debug_dump_memory_words(&tail, 1);
 
-	/* calculate the in buffer */
-	debug_dump_memory_words(index_to_inbuf(tail), 64);
+	len = *REG(NET_IN_BUF_LEN);
+	debug_dump_memory_words(&len, 1);
 
+	/* calculate the in buffer */
+	debug_dump_memory_words((void *)NET_IN_BUF, (len + 3) / 4);
 
 	*REG(NET_TAIL) = *REG(NET_HEAD);
 }
