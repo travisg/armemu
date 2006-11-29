@@ -121,7 +121,7 @@ static word network_regs_get_put(armaddr_t address, word data, int size, int put
 			break;
 		case NET_SEND_LEN:
 			if (put) {
-				network->out_packet_len = data;
+				network->out_packet_len = data % PACKET_LEN;
 			}
 			val = network->out_packet_len;
 			break;

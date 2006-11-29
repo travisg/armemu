@@ -134,6 +134,7 @@
 #define NET_REGS_SIZE MEMBANK_SIZE
 
 #define NET_BUF_LEN 2048
+#define NET_IN_BUF_COUNT 32
 
 #define NET_HEAD	(NET_REGS_BASE + 0)		/* current next buffer the hardware will write to */
 #define NET_TAIL	(NET_REGS_BASE + 4)		/* currently selected input buffer */
