@@ -138,6 +138,8 @@ static unsigned int back_color;
 static int char_x, char_y;
 static int num_cols, num_rows;
 
+static int text_initialized = 0;
+
 #define CHAR_WIDTH 6
 #define CHAR_HEIGHT 12
 
@@ -147,6 +149,9 @@ void draw_char(unsigned char c, int x, int y)
 	unsigned char line;
 	unsigned int char_bitmap[CHAR_HEIGHT * CHAR_WIDTH];
 	unsigned int *ptr;
+
+	if (!text_initialized)
+		return;
 
 	// draw this char into a buffer
 	ptr = char_bitmap;
@@ -177,6 +182,7 @@ int initialize_text(void)
 
 	num_cols = SCREEN_X / CHAR_WIDTH;
 	num_rows = SCREEN_Y / CHAR_HEIGHT;
+	text_initialized = 1;
 
 	return 0;
 }
@@ -191,6 +197,9 @@ void puts(const char *str)
 
 void putchar(char c)
 {
+	if (!text_initialized)
+		return;
+
 	if(c == '\n' || c == '\r') {
 		char_x = 0;
 		char_y++;

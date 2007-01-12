@@ -3,6 +3,8 @@
 #include "console.h"
 #include "memmap.h"
 
+static int has_display = 0;
+
 void arm_enable_ints(void);
 void armfunc(int a);
 
@@ -24,11 +26,17 @@ int main(void)
 	
 	cpufunc();
 
+	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_DISPLAY)
+		has_display = 1;
+
 //	for(i = 0xff; i >= 0; i -= 0x10) 
 //		clear_display(i | (i<<8) | (i<<16) | (i<<24));
-	clear_display(0);
-	initialize_text();
-	set_text_color(0xffffffff, 0);
+
+	if (has_display) {
+		clear_display(0);
+		initialize_text();
+		set_text_color(0xffffffff, 0);
+	}
 
 	puts("console initialized\n");
 
