@@ -42,9 +42,12 @@ static int init_sdl(void)
 {
 	atexit(SDL_Quit);
 
-	SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER);
+	uint32_t flags = SDL_INIT_TIMER;
 
-	return 0;
+	if (get_config_key_bool("system", "display", FALSE))
+		flags |= SDL_INIT_VIDEO;
+
+	return SDL_Init(flags);
 }
 
 int main(int argc, char **argv)
@@ -83,7 +86,10 @@ int main(int argc, char **argv)
 	}
 
 	// bring up the SDL system
-	init_sdl();
+	if (init_sdl() < 0) {
+		printf("error initializing sdl. aborting...\n");
+		return 1;
+	}
 
 	// initialize the system
 	initialize_system();

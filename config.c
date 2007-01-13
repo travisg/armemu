@@ -129,6 +129,20 @@ const char *get_config_key_string(const char *group, const char *key, const char
 	return k->val;
 }
 
+int get_config_key_bool(const char *group, const char *key, int default_val)
+{
+	struct config_key *k;
+	
+	k = find_config_key(group, key);
+	if(k == NULL)
+		return default_val;
+
+	if (!strcasecmp(k->val, "true") || !strcasecmp(k->val, "yes") || atoi(k->val) != 0)
+		return 1;
+	else
+		return 0;
+}
+
 static char *trim_string(char *str)
 {
 	char *s = str;

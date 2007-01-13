@@ -61,13 +61,7 @@ static int initialize_sysinfo_regs(void);
 
 static bool has_sys_feature(const char *name, bool def)
 {
-    const char *tmp = get_config_key_string("system", name, def ? "yes" : "no");
-
-    if(!strcasecmp(tmp,"yes"))
-		return TRUE;
-    if(atoi(tmp) != 0)
-		return TRUE;
-    return 0;
+	return get_config_key_bool("system", name, def);
 }
     
 static void load_feature_config(void)
