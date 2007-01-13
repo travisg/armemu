@@ -117,8 +117,7 @@ int initialize_system(void)
             // initialize the network (via tun/tap)
         initialize_network();
     }
-
-	// debug device
+// debug device
     initialize_debug();
     
 	return 0;
@@ -152,27 +151,35 @@ void system_start(void)
 
 int system_message_loop(void)
 {
-	SDL_Event event;
-	int quit = 0;
 
-	while(!quit) {
-		SDL_WaitEvent(&event);
+	if (sys.features & SYSINFO_FEATURE_DISPLAY) {
+		SDL_Event event;
+		int quit = 0;
+		while(!quit) {
+			SDL_WaitEvent(&event);
 
-		switch (event.type) {
-			case SDL_KEYDOWN:
-//				printf("The %s 0x%x key was pressed!\n", 
-//					SDL_GetKeyName(event.key.keysym.sym), event.key.keysym.sym);
-				console_keydown(event.key.keysym.sym);
-				break;
-			case SDL_KEYUP:
-//				printf("The %s 0x%x key was released!\n", 
-//					SDL_GetKeyName(event.key.keysym.sym), event.key.keysym.sym);
-				console_keyup(event.key.keysym.sym);
-				break;
-			case SDL_QUIT:
-				quit = 1;
-				break;
+			switch (event.type) {
+				case SDL_KEYDOWN:
+	//				printf("The %s 0x%x key was pressed!\n", 
+	//					SDL_GetKeyName(event.key.keysym.sym), event.key.keysym.sym);
+					console_keydown(event.key.keysym.sym);
+					break;
+				case SDL_KEYUP:
+	//				printf("The %s 0x%x key was released!\n", 
+	//					SDL_GetKeyName(event.key.keysym.sym), event.key.keysym.sym);
+					console_keyup(event.key.keysym.sym);
+					break;
+				case SDL_QUIT:
+					quit = 1;
+					break;
+			}
 		}
+	} else {
+		// we don't have a display, and thus cannot have an event loop
+		
+		// wait here for ^c
+		for(;;)
+			sleep(10000);
 	}
 
 	return 0;
