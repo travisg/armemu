@@ -139,6 +139,10 @@ static int display_thread_entry(void *args)
 
 int initialize_display(void)
 {
+	// initialize the SDL display
+	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
+		return -1;
+
 	memset(&display, 0, sizeof(display));
 
 	// set up default geometry

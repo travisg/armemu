@@ -42,12 +42,7 @@ static int init_sdl(void)
 {
 	atexit(SDL_Quit);
 
-	uint32_t flags = SDL_INIT_TIMER;
-
-	if (get_config_key_bool("system", "display", FALSE))
-		flags |= SDL_INIT_VIDEO;
-
-	return SDL_Init(flags);
+	return SDL_Init(SDL_INIT_TIMER);
 }
 
 int main(int argc, char **argv)
