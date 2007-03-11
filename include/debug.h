@@ -26,7 +26,7 @@
 #include <stdarg.h>
 #include <options.h> // for TRACE_XXX_LEVEL
 
-void dprintf(const char *fmt, ...);
+void _dprintf(const char *fmt, ...);
 
 #if DYNAMIC_TRACE_LEVELS
 extern int TRACE_CPU_LEVEL;
@@ -36,10 +36,10 @@ extern int TRACE_MMU_LEVEL;
 #endif
 
 /* trace */
-#define CPU_TRACE(level, x...) { if((level) <= TRACE_CPU_LEVEL) dprintf(x); } while(0)
-#define UOP_TRACE(level, x...) { if((level) <= TRACE_UOP_LEVEL) dprintf(x); } while(0)
-#define SYS_TRACE(level, x...) { if((level) <= TRACE_SYS_LEVEL) dprintf(x); } while(0)
-#define MMU_TRACE(level, x...) { if((level) <= TRACE_MMU_LEVEL) dprintf(x); } while(0)
+#define CPU_TRACE(level, x...) { if((level) <= TRACE_CPU_LEVEL) _dprintf(x); } while(0)
+#define UOP_TRACE(level, x...) { if((level) <= TRACE_UOP_LEVEL) _dprintf(x); } while(0)
+#define SYS_TRACE(level, x...) { if((level) <= TRACE_SYS_LEVEL) _dprintf(x); } while(0)
+#define MMU_TRACE(level, x...) { if((level) <= TRACE_MMU_LEVEL) _dprintf(x); } while(0)
 
 #endif
 
