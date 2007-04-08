@@ -92,8 +92,6 @@ struct mmu_state_struct {
 
 static struct mmu_state_struct mmu; // defaults to off
 
-static void invalidate_tcache(void);
-
 void mmu_init(int with_mmu)
 {
 	memset(&mmu, 0, sizeof(mmu));
@@ -110,7 +108,7 @@ word mmu_set_flags(word flags)
 	mmu.flags = flags;
 
 	/* it may have changed S or R or mmu enable bit, flush our translation cache */
-	invalidate_tcache();
+	mmu_invalidate_tcache();
 
 	return oldflags;
 }
@@ -127,11 +125,11 @@ void mmu_set_register(enum mmu_registers reg, word val)
 	switch(reg) {
 		case MMU_TRANS_TABLE_REG:
 			mmu.translation_table = val;
-			invalidate_tcache(); // TLB flush
+			mmu_invalidate_tcache(); // TLB flush
 			break;
 		case MMU_DOMAIN_ACCESS_CONTROL_REG:
 			mmu.domain_access_control = val;
-			invalidate_tcache(); // TLB flush
+			mmu_invalidate_tcache(); // TLB flush
 			break;
 		case MMU_FAULT_STATUS_REG:
 			mmu.fault_status = val;
@@ -159,7 +157,7 @@ word mmu_get_register(enum mmu_registers reg)
 }
 
 /* translation cache code */
-static void invalidate_tcache(void)
+void mmu_invalidate_tcache(void)
 {
 	int i;
 

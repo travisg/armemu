@@ -42,7 +42,7 @@ bool mmu_write_mem_byte(armaddr_t address, byte data);
 void mmu_init(int with_mmu);
 
 /* mmu flags (cr1 flags in cp15) */
-#define MMU_ENABLED_FLAG           1
+#define MMU_ENABLED_FLAG          (1<<0)
 #define MMU_ALIGNMENT_FAULT_FLAG  (1<<1)
 #define MMU_SYS_PROTECTION_FLAG   (1<<8)
 #define MMU_ROM_PROTECTION_FLAG   (1<<9)
@@ -63,5 +63,6 @@ enum mmu_registers {
 
 void mmu_set_register(enum mmu_registers reg, word val);
 word mmu_get_register(enum mmu_registers reg);
+void mmu_invalidate_tcache(void);
 
 #endif

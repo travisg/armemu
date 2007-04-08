@@ -78,17 +78,20 @@ static void op_cp15_reg_transfer(word ins, void *data)
 			} else {
 				word newval = get_reg(Rd);
 
-				/* for now, we only support setting mmu flags */
-				if((newval & MMU_FLAG_MASK ) != newval) {
-					/* some other flags were being set, we can't deal */
-					panic_cpu("unsupported bits in cp15.cr1 are being set (0x%x)\n", newval);
+				if (newval & MMU_FLAG_MASK) {
+					/* load the potentially new mmu config */
+					mmu_set_flags(newval & MMU_FLAG_MASK);
 				}
+				if (newval & (1<<13)) { // high vector flag
+					panic_cpu("high vectors not supported yet (bit 13 in cr1)\n");
+				}
+				if (newval & (1<<15)) { // armv5 backwards compatibility mode
+					panic_cpu("backwards compatible PC load mode not supported in armv5 (bit 15 in cr1)\n");
+				}
+				/* ignore all the other bits */
 
 				/* save our config */
 				cp15.cr1 = newval;
-
-				/* load the potentially new mmu config */
-				mmu_set_flags(newval & MMU_FLAG_MASK);
 
 				goto done;
 			}
@@ -137,7 +140,18 @@ static void op_cp15_reg_transfer(word ins, void *data)
 			}
 			goto donothing;
 		case 8: // tlb flush
-			goto unsupported;
+			if (L) {
+				switch(CRm) {
+					case 7: // unified TLB 
+					case 5: // instruction TLB
+						flush_all_codepages();
+						// fall through
+					case 6: // data TLB
+						mmu_invalidate_tcache();
+						goto done;
+				}
+			}
+			goto donothing;
 		case 9: // cache lockdown
 			goto donothing;
 		case 10: // tlb lockdown
