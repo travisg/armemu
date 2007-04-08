@@ -32,6 +32,7 @@
 #include <arm/arm.h>
 #include <arm/mmu.h>
 #include <arm/uops.h>
+#include <arm/ops.h>
 #include <util/atomic.h>
 
 struct cpu_struct cpu; // the cpu
