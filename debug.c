@@ -30,7 +30,7 @@ int TRACE_SYS_LEVEL = DEFAULT_TRACE_SYS_LEVEL;
 int TRACE_MMU_LEVEL = DEFAULT_TRACE_MMU_LEVEL;
 #endif
 
-void dprintf(const char *fmt, ...)
+void _dprintf(const char *fmt, ...)
 {
 	va_list ap;
 
