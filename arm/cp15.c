@@ -78,17 +78,16 @@ static void op_cp15_reg_transfer(word ins, void *data)
 			} else {
 				word newval = get_reg(Rd);
 
-				if (newval & MMU_FLAG_MASK) {
-					/* load the potentially new mmu config */
-					mmu_set_flags(newval & MMU_FLAG_MASK);
-				}
-				if (newval & (1<<13)) { // high vector flag
-					panic_cpu("high vectors not supported yet (bit 13 in cr1)\n");
-				}
 				if (newval & (1<<15)) { // armv5 backwards compatibility mode
 					panic_cpu("backwards compatible PC load mode not supported in armv5 (bit 15 in cr1)\n");
 				}
 				/* ignore all the other bits */
+
+				/* set high/low vector base */
+				set_exception_base((newval & (1<<13)) ? 0xffff0000 : 0);
+
+				/* load the potentially new mmu config */
+				mmu_set_flags(newval & MMU_FLAG_MASK);
 
 				/* save our config */
 				cp15.cr1 = newval;

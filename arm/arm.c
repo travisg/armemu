@@ -354,6 +354,12 @@ void install_coprocessor(int cp_num, struct arm_coprocessor *coproc)
 	memcpy(&cpu.coproc[cp_num], coproc, sizeof(struct arm_coprocessor));
 }
 
+void set_exception_base(armaddr_t addr)
+{
+	CPU_TRACE(4, "set_exception_base: 0x%08x\n", addr);
+	cpu.exception_base = addr;
+}
+
 /* build the condition table for checking conditional instructions */
 int build_condition_table(void)
 {
@@ -466,7 +472,7 @@ bool process_pending_exceptions(void)
 	if(cpu.pending_exceptions & EX_RESET) {
 		// go to a default state
 		cpu.cpsr = PSR_IRQ_MASK | PSR_FIQ_MASK;
-		put_reg(PC, 0x0);
+		put_reg(PC, cpu.exception_base + 0x0);
 		cpu.curr_cp = NULL;
 
 		set_cpu_mode(PSR_MODE_svc);
@@ -484,7 +490,7 @@ bool process_pending_exceptions(void)
 	if(cpu.pending_exceptions & EX_UNDEFINED) {
 		cpu.und_regs[1] = cpu.pc + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the undefined instruction
 		cpu.und_regs[2] = cpu.cpsr;
-		put_reg(PC, 0x4);
+		put_reg(PC, cpu.exception_base + 0x4);
 
 		if(get_condition(PSR_THUMB))
 			cpu.curr_cp = NULL; // reset the codepage
@@ -504,7 +510,7 @@ bool process_pending_exceptions(void)
 	if(cpu.pending_exceptions & EX_SWI) {
 		cpu.svc_regs[1] = cpu.pc + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the swi instruction
 		cpu.svc_regs[2] = cpu.cpsr;
-		put_reg(PC, 0x8);
+		put_reg(PC, cpu.exception_base + 0x8);
 
 		if(get_condition(PSR_THUMB))
 			cpu.curr_cp = NULL; // reset the codepage
@@ -524,7 +530,7 @@ bool process_pending_exceptions(void)
 	if(cpu.pending_exceptions & EX_PREFETCH) {
 		cpu.abt_regs[1] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // next instruction after the aborted instruction
 		cpu.abt_regs[2] = cpu.cpsr;
-		put_reg(PC, 0xc);
+		put_reg(PC, cpu.exception_base + 0xc);
 
 		if(get_condition(PSR_THUMB))
 			cpu.curr_cp = NULL; // reset the codepage
@@ -544,7 +550,7 @@ bool process_pending_exceptions(void)
 	if(cpu.pending_exceptions & EX_DATA_ABT) {
 		cpu.abt_regs[1] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // +8 from faulting instruction
 		cpu.abt_regs[2] = cpu.cpsr;
-		put_reg(PC, 0x10);
+		put_reg(PC, cpu.exception_base + 0x10);
 
 		if(get_condition(PSR_THUMB))
 			cpu.curr_cp = NULL; // reset the codepage
@@ -564,7 +570,7 @@ bool process_pending_exceptions(void)
 	if(cpu.pending_exceptions & EX_FIQ && !(cpu.cpsr & PSR_FIQ_MASK)) {
 		cpu.fiq_regs[6] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // address of next instruction + 4
 		cpu.fiq_regs[7] = cpu.cpsr;
-		put_reg(PC, 0x1c);
+		put_reg(PC, cpu.exception_base + 0x1c);
 
 		if(get_condition(PSR_THUMB))
 			cpu.curr_cp = NULL; // reset the codepage
@@ -582,7 +588,7 @@ bool process_pending_exceptions(void)
 	if(cpu.pending_exceptions & EX_IRQ && !(cpu.cpsr & PSR_IRQ_MASK)) {
 		cpu.irq_regs[1] = cpu.pc + 4 + (get_condition(PSR_THUMB) ? 1 : 0); // address of next instruction + 4
 		cpu.irq_regs[2] = cpu.cpsr;
-		put_reg(PC, 0x18);
+		put_reg(PC, cpu.exception_base + 0x18);
 
 		if(get_condition(PSR_THUMB))
 			cpu.curr_cp = NULL; // reset the codepage

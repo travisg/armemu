@@ -125,6 +125,7 @@ struct cpu_struct {
 	// pending interrupts and mode changes
 	volatile int pending_exceptions;
 	reg_t old_cpsr; // in case of a mode switch, we store the old mode
+	armaddr_t exception_base; // 0 or 0xffff0000 on cpus that support it
 
 	// cache of uop codepages
 	struct uop_codepage *curr_cp;
@@ -414,6 +415,7 @@ void dump_cpu(void);
 void dump_registers(void);
 int build_condition_table(void);
 void install_coprocessor(int cp_num, struct arm_coprocessor *coproc);
+void set_exception_base(armaddr_t base);
 
 /* coprocessor 15 is for system mode stuff */
 void install_cp15(void);

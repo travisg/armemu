@@ -103,14 +103,17 @@ void mmu_init(int with_mmu)
 
 word mmu_set_flags(word flags)
 {
-	MMU_TRACE(5, "mmu_set_flags: flags 0x%08x\n", flags);
 	word oldflags = mmu.flags;
-	mmu.flags = flags;
 
-	/* it may have changed S or R or mmu enable bit, flush our translation cache */
-	mmu_invalidate_tcache();
+	if (flags != oldflags) {
+		MMU_TRACE(5, "mmu_set_flags: flags 0x%08x\n", flags);
+		mmu.flags = flags;
 
-	return oldflags;
+		/* it may have changed S or R or mmu enable bit, flush our translation cache */
+		mmu_invalidate_tcache();
+	}
+
+	return oldflags;		
 }
 
 word mmu_get_flags(void)
