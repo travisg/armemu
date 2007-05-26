@@ -34,4 +34,6 @@ typedef int bool;
 #define TRUE 1
 #define FALSE 0
 
+#define IS_64HOST (sizeof(long) == 8)
+
 #endif

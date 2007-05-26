@@ -286,19 +286,19 @@ extern inline word do_add(word a, word b, int carry_in, int *carry, int *ovl)
 {
 	word val;
 
-#if 1
+if (!IS_64HOST) {
 	val = a + b + carry_in;
 
 	*carry = (ISNEG(a & b) ||				// both operands are negative, or
 			 (ISNEG(a ^ b) && ISPOS(val))); // exactly one of the operands is negative, and result is positive
-#else
+} else {
 	/* 64 bit version of the add routine to optimize for the carry flag test */
 	dword bigval;
 
 	bigval = (dword)a + (dword)b + (dword)carry_in;
 	*carry = BIT_SHIFT(bigval, 32);
 	val = (word)bigval;
-#endif
+}
 
 	*ovl = (!(ISNEG(a ^ b))) && (ISNEG(a ^ val));
 
