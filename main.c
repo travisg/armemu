@@ -31,6 +31,9 @@
 
 #include <config.h>
 
+#include <sys/ioctl.h>
+#include <termio.h>
+
 static void usage(int argc, char **argv)
 {
 	printf("usage: %s [-b binary] [-c cpu type] [-r romfile] [-n cycle count]\n", argv[0]);
@@ -79,6 +82,15 @@ int main(int argc, char **argv)
 				break;
 		}
 	}
+
+	// turn off line echo
+	struct termio tty, oldtty;
+	ioctl(0, TCGETA, &oldtty);
+	tty = oldtty;
+	tty.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL);
+	tty.c_cc[VMIN]  = 1;
+	tty.c_cc[VTIME] = 0;
+	ioctl(0, TCSETA, &tty);
 
 	// bring up the SDL system
 	if (init_sdl() < 0) {
