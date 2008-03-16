@@ -88,8 +88,8 @@ int main(int argc, char **argv)
 	ioctl(0, TCGETA, &oldtty);
 	tty = oldtty;
 	tty.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL);
-	tty.c_cc[VMIN]  = 1;
-	tty.c_cc[VTIME] = 0;
+	tty.c_cc[VMIN]  = 0; // nonblocking read
+	tty.c_cc[VTIME] = 0; // nonblocking read
 	ioctl(0, TCSETA, &tty);
 
 	// bring up the SDL system
