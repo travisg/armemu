@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2006 Travis Geiselbrecht
+ * Copyright (c) 2005-2008 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -37,6 +37,11 @@
 #include "sys_p.h"
 #include <util/endian.h>
 #include <util/atomic.h>
+
+/* tuntap stuff */
+#include <sys/ioctl.h>
+#include <linux/if.h>
+#include <linux/if_tun.h>
 
 #define PACKET_LEN 2048
 #define PACKET_QUEUE_LEN 32	/* must be power of 2 */
@@ -157,7 +162,7 @@ static int network_thread(void *args)
 		ssize_t ret;
 		ret = read(network->fd, network->in_packet[network->head], PACKET_LEN);
 		if (ret > 0) {
-			SYS_TRACE(1, "sys: got network data, size %d, head %d, tail %d\n", ret, network->head, network->tail);
+			SYS_TRACE(2, "sys: got network data, size %d, head %d, tail %d\n", ret, network->head, network->tail);
 
 			network->in_packet_len[network->head] = ret;
 
@@ -167,6 +172,35 @@ static int network_thread(void *args)
 	}
 
 	return 0;
+}
+
+static int open_tun(const char *dev)
+{
+	struct ifreq ifr;
+	int fd, err;
+
+	fd = open("/dev/net/tun", O_RDWR);
+	if (fd < 0)
+		return fd;
+
+	memset(&ifr, 0, sizeof(ifr));
+
+	printf("fd %d\n", fd);
+
+	/* Flags: IFF_TUN   - TUN device (no Ethernet headers)
+	*        IFF_TAP   - TAP device
+	*
+	*        IFF_NO_PI - Do not provide packet information
+	*/
+	ifr.ifr_flags = IFF_TAP;
+	if( *dev )
+		strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+
+	if( (err = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0 ){
+		close(fd);
+		return err;
+	}
+	return fd;
 }
 
 int initialize_network(void)
@@ -186,7 +220,7 @@ int initialize_network(void)
 	}
 
 	// try to open the device
-	network->fd = open(str, O_RDWR);
+	network->fd = open_tun(str);
 	if (network->fd < 0) {
 		SYS_TRACE(0, "sys: failed to open tun/tap interface at '%s'\n", str);
 		exit(1);
