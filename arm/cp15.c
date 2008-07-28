@@ -129,15 +129,39 @@ static void op_cp15_reg_transfer(word ins, void *data)
 				goto done;
 			}	
 		case 7: // cache registers, we only sort of emulate the instruction cache
+			CPU_TRACE(5, "cache instruction: L %d m %d n %d d %d op1 %d op2 %d\n", L, CRm, CRn, Rd, opcode_1, opcode_2);
 			if (!L) {
 				switch(CRm) {
-					case 7:
+					case 0: // wait for interrupt
+						goto done;
 					case 5: // various forms of ICache invalidation
+					case 7: // invalidate Icache + Dcache
 						flush_all_codepages();
 						goto done;
+					case 6: // invalidate dcache
+						goto done;
+					case 10: // clean dcache & drain write buffer
+						goto done;
+					case 13: // prefetch icache
+						goto done;
+					case 14: // clean and invalidate dcache
+						goto done;
 				}
+			} else { // store
+				switch(CRm) {
+					case 14: // clean and invalidate dcache
+					case 10: // clean dcache & drain write buffer
+						// arm926 special cache routine that makes it easy to clear the entire cache
+						// since it doesn't really do anything, probably okay to leave it in for all cores
+						if (opcode_2 == 3) {
+							// test and clean, side effect is to set the NZ condition
+							val = 0; // (1<<30);
+							set_NZ_condition(val);
+							goto loadval;
+						}
+				}
+				goto donothing;
 			}
-			goto donothing;
 		case 8: // tlb flush
 			if (L) {
 				switch(CRm) {
