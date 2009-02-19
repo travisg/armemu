@@ -238,7 +238,7 @@ enum {
 #define LSL(val, shift) \
 	(((shift) >= 32) ? 0 : ((val) << (shift)))
 #define LSR(val, shift) \
-	((val) >> (shift))
+	(((shift) >= 32) ? 0 : ((val) >> (shift)))
 #define ASR(val, shift) \
 	(((int)(val)) >> (shift))
 #define ROR(val, shift) \

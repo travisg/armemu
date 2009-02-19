@@ -1563,7 +1563,6 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_shift(struct uop *op)
 	// handle the immediate shift form of barrel shifter
 	switch(op->data_processing_reg_shift.shift_opcode) {
 		default: case 0: // LSL by reg (page A5-10)
-			temp_word3 &= 0xff;
 			if(temp_word3 == 0) {
 				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
@@ -2115,6 +2114,7 @@ static inline __ALWAYS_INLINE void uop_lsr_reg(struct uop *op)
 
 	a = get_reg(op->simple_dp_reg.source_reg);
 	shift = get_reg(op->simple_dp_reg.source2_reg);
+	shift &= 0xff;
 
 	result = LSR(a, shift);
 
@@ -2135,6 +2135,7 @@ static inline __ALWAYS_INLINE void uop_lsr_reg_s(struct uop *op)
 
 	a = get_reg(op->simple_dp_reg.source_reg);
 	shift = get_reg(op->simple_dp_reg.source2_reg);
+	shift &= 0xff;
 
 	result = LSR(a, shift);
 	if(shift == 0) {
