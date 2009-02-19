@@ -236,7 +236,7 @@ enum {
 
 /* shift and rotate helpers */
 #define LSL(val, shift) \
-	((val) << (shift))
+	(((shift) >= 32) ? 0 : ((val) << (shift)))
 #define LSR(val, shift) \
 	((val) >> (shift))
 #define ASR(val, shift) \
