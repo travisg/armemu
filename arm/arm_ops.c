@@ -508,7 +508,7 @@ void op_data_processing(struct uop *op)
 					op->simple_dp_reg.source2_reg = Rs;
 					CPU_TRACE(6, "\t\tLSR_REG: S Rd %d Rm %d Rs %d S %d\n", Rd, Rm, Rs, S?1:0);
 					break;
-				case 2: // LSR
+				case 2: // ASR
 					if(S)
 						op->opcode = ASR_REG_S;
 					else
@@ -516,7 +516,7 @@ void op_data_processing(struct uop *op)
 					op->simple_dp_reg.dest_reg = Rd;
 					op->simple_dp_reg.source_reg = Rm;
 					op->simple_dp_reg.source2_reg = Rs;
-					CPU_TRACE(6, "\t\tLSR_REG: S Rd %d Rm %d Rs %d S %d\n", Rd, Rm, Rs, S?1:0);
+					CPU_TRACE(6, "\t\tASR_REG: S Rd %d Rm %d Rs %d S %d\n", Rd, Rm, Rs, S?1:0);
 					break;
 				case 3: // ROR
 					if(S)
