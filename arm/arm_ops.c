@@ -595,7 +595,15 @@ void op_data_processing(struct uop *op)
 
 				CPU_TRACE(6, "\t\tSUB_IMM: Rd %d Rn %d immed %d\n", Rd, Rn, immed);
 				break;
-			} else if(Rd != PC && !S && opcode == AOP_ORR) { // SUB
+			} else if(Rd != PC && !S && opcode == AOP_AND) { // AND
+				op->opcode = AND_IMM;
+				op->simple_dp_imm.dest_reg = Rd;
+				op->simple_dp_imm.source_reg = Rn;
+				op->simple_dp_imm.immediate = immed;
+
+				CPU_TRACE(6, "\t\tAND_IMM: Rd %d Rn %d immed %d\n", Rd, Rn, immed);
+				break;
+			} else if(Rd != PC && !S && opcode == AOP_ORR) { // ORR
 				op->opcode = ORR_IMM;
 				op->simple_dp_imm.dest_reg = Rd;
 				op->simple_dp_imm.source_reg = Rn;

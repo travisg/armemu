@@ -197,6 +197,7 @@ const char *uop_opcode_to_str(int opcode)
 		OP_TO_STR(ADC_REG_S);
 		OP_TO_STR(SUB_REG_S);
 		OP_TO_STR(SBC_REG_S);
+		OP_TO_STR(AND_IMM);
 		OP_TO_STR(ORR_IMM);
 		OP_TO_STR(ORR_REG_S);
 		OP_TO_STR(LSL_IMM);
@@ -1910,6 +1911,22 @@ static inline __ALWAYS_INLINE void uop_sbc_reg_s(struct uop *op)
 #endif
 }
 
+// and with immediate, PC may not be target
+static inline __ALWAYS_INLINE void uop_and_imm(struct uop *op) 
+{
+	word a;
+	word result;
+
+	a = get_reg(op->simple_dp_imm.source_reg);
+	result = a & op->simple_dp_imm.immediate;
+
+	put_reg_nopc(op->simple_dp_imm.dest_reg, result);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
 // or with immediate, PC may not be target
 static inline __ALWAYS_INLINE void uop_orr_imm(struct uop *op) 
 {
@@ -2916,6 +2933,9 @@ int uop_dispatch_loop(void)
 				break;
 			case SBC_REG_S:
 				uop_sbc_reg_s(op);
+				break;
+			case AND_IMM:
+				uop_and_imm(op);
 				break;
 			case ORR_IMM:
 				uop_orr_imm(op);

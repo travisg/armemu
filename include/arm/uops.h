@@ -69,6 +69,7 @@ enum uop_opcode {
 	SUB_REG_S,					// subtract, sets full conditions
 	SBC_REG_S,					// subtract with carry, sets full conditions
 
+	AND_IMM,                    // and with immediate value, no conditions
 	ORR_IMM,                    // orr with immediate value, no conditions
 	ORR_REG_S,					// orr, sets NZ condition bits
 
