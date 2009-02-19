@@ -2216,6 +2216,7 @@ static inline __ALWAYS_INLINE void uop_asr_reg(struct uop *op)
 
 	a = get_reg(op->simple_dp_reg.source_reg);
 	shift = get_reg(op->simple_dp_reg.source2_reg);
+	shift &= 0xff;
 
 	result = ASR(a, shift);
 
@@ -2236,6 +2237,7 @@ static inline __ALWAYS_INLINE void uop_asr_reg_s(struct uop *op)
 
 	a = get_reg(op->simple_dp_reg.source_reg);
 	shift = get_reg(op->simple_dp_reg.source2_reg);
+	shift &= 0xff;
 
 	result = ASR(a, shift);
 	if(shift == 0) {
@@ -2244,10 +2246,6 @@ static inline __ALWAYS_INLINE void uop_asr_reg_s(struct uop *op)
 		carry = BIT(a, shift - 1);
 	} else { // RmRsval >= 32
 		carry = BIT(a, 31);
-		if(carry)
-			result = 0xffffffff;
-		else
-			result = 0;
 	}
 
 	set_NZ_condition(result);

@@ -239,8 +239,10 @@ enum {
 	(((shift) >= 32) ? 0 : ((val) << (shift)))
 #define LSR(val, shift) \
 	(((shift) >= 32) ? 0 : ((val) >> (shift)))
-#define ASR(val, shift) \
+#define ASR_SIMPLE(val, shift) \
 	(((int)(val)) >> (shift))
+#define ASR(val, shift) \
+	(((shift) >= 32) ? (BIT(val, 31) ? (int)-1 : 0) : (((int)(val)) >> (shift)))
 #define ROR(val, shift) \
 	(((val) >> (shift)) | ((val) << (32 - (shift))))
 
@@ -257,7 +259,7 @@ enum {
 
 /* 32-bit sign extension */
 //#define SIGN_EXTEND(val, topbit) (BIT(val, topbit) ? ((val) | (0xffffffff << (topbit))) : (val)) 
-#define SIGN_EXTEND(val, topbit) (ASR(LSL(val, 32-(topbit)), 32-(topbit)))
+#define SIGN_EXTEND(val, topbit) (ASR_SIMPLE(LSL(val, 32-(topbit)), 32-(topbit)))
 
 /* ARM routines */
 reg_t get_reg(int num);
