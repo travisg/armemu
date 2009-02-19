@@ -1563,51 +1563,37 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_shift(struct uop *op)
 	// handle the immediate shift form of barrel shifter
 	switch(op->data_processing_reg_shift.shift_opcode) {
 		default: case 0: // LSL by reg (page A5-10)
+			shifter_operand = LSL(temp_word2, temp_word3);
 			if(temp_word3 == 0) {
-				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
 			} else if(temp_word3 < 32) {
-				word lower_shift = BITS(temp_word3, 7, 0);
-				shifter_operand = LSL(temp_word2, lower_shift);
-				shifter_carry_out = BIT(temp_word2, 32 - lower_shift);
+				shifter_carry_out = BIT(temp_word2, 32 - temp_word3);
 			} else if(temp_word3 == 32) {
-				shifter_operand = 0;
 				shifter_carry_out = BIT(temp_word2, 0);
 			} else { // temp_word3 > 32
-				shifter_operand = 0;
 				shifter_carry_out = 0;
 			}
 			break;
 		case 1: // LSR by reg (page A5-12)
+			shifter_operand = LSR(temp_word2, temp_word3);
 			if(temp_word3 == 0) {
-				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
 			} else if(temp_word3 < 32) {
-				shifter_operand = LSR(temp_word2, temp_word3);
 				shifter_carry_out = BIT(temp_word2, temp_word3 - 1);
 			} else if(temp_word3 == 32) {
-				shifter_operand = 0;
 				shifter_carry_out = BIT(temp_word2, 31);
 			} else {
-				shifter_operand = 0;
 				shifter_carry_out = 0;
 			}
 			break;
 		case 2: // ASR by reg (page A5-14)
+			shifter_operand = ASR(temp_word2, temp_word3);
 			if(temp_word3 == 0) {
-				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
 			} else if(temp_word3 < 32) {
-				shifter_operand = ASR(temp_word2, temp_word3);
 				shifter_carry_out = BIT(temp_word2, temp_word3 - 1);
 			} else if(temp_word3 >= 32) {
-				if(BIT(temp_word2, 31) == 0) {
-					shifter_operand = 0;
-					shifter_carry_out = 0; // Rm[31] == 0
-				} else {
-					shifter_operand = 0xffffffff;
-					shifter_carry_out = 0x80000000; // Rm[31] == 1
-				}
+				shifter_carry_out = BIT(temp_word2, 31);
 			}
 			break;
 		case 3: // ROR by reg (page A5-16)
