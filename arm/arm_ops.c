@@ -448,7 +448,7 @@ void op_data_processing(struct uop *op)
 					op->simple_dp_imm.immediate = shift_imm;
 					CPU_TRACE(6, "\t\tLSR_IMM: S Rd %d Rm %d shift_immed %d S %d\n", Rd, Rm, shift_imm, S?1:0);
 					break;
-				case 2: // LSR
+				case 2: // ASR
 					if(S)
 						op->opcode = ASR_IMM_S;
 					else
