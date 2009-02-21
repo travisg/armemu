@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 Travis Geiselbrecht
+ * Copyright (c) 2005-2009 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -28,9 +28,9 @@
 
 typedef void (*decode_stage_func)(struct uop *op);
 
-static void bad_decode(struct uop *op)
+static void unimplemented(struct uop *op, const char *str)
 {
-	panic_cpu("bad_decode: ins 0x%08x at 0x%08x\n", op->undecoded.raw_instruction, cpu.pc - 4);
+	panic_cpu("unimplemented ins 0x%08x at 0x%08x -- %s\n", op->undecoded.raw_instruction, cpu.pc - 4, str);
 }
 
 // opcode[27:25] == 0b000
@@ -76,7 +76,7 @@ static void prim_group_0_decode(struct uop *op)
 					}
 					break;
 				case (5<<4):
-					bad_decode(op); // XXX DSP add/subtracts go here (qadd, qsub, qdadd, qdsub)
+					unimplemented(op, "DSP add/subtract"); // XXX DSP add/subtracts go here (qadd, qsub, qdadd, qdsub)
 					break;
 				case (7<<4):
 					if(op1 == 1) {
@@ -93,7 +93,7 @@ static void prim_group_0_decode(struct uop *op)
 		}
         // cases of bits 24:23 == 2 and bit 20 == 0 and bit 7 == 1 and bit 4 == 0
 		case (2<<23)|(1<<7):
-			bad_decode(op); // XXX DSP multiplies go here (smla, smlaw, smulw, smlal, smul)
+			unimplemented(op, "DSP multiply"); // XXX DSP multiplies go here (smla, smlaw, smulw, smlal, smul)
 			break;
 		// all cases of bit 7 and 4 being set
 		case                 (1<<7)|(1<<4):
@@ -109,7 +109,7 @@ static void prim_group_0_decode(struct uop *op)
 					switch(op->undecoded.raw_instruction & (3<<23)) {
 						case 0:
 							if (BIT(op->undecoded.raw_instruction, 22))
-								bad_decode(op); // umaal, armv6
+								unimplemented(op, "umaal"); // umaal, armv6
 							else
 								op_mul(op); // mul/mla
 							break;
@@ -120,7 +120,7 @@ static void prim_group_0_decode(struct uop *op)
 							op_swap(op); // swp/swpb
 							break;
 						case (3<<23):
-							bad_decode(op); // armv6 ldrex/strex
+							unimplemented(op, "ldrex/strex"); // armv6 ldrex/strex
 							break;
 					}
 					break;
@@ -161,28 +161,76 @@ static void prim_group_1_decode(struct uop *op)
 static void prim_group_3_decode(struct uop *op)
 {
 	/* look for armv6 media instructions */
-	if(op->undecoded.raw_instruction & (1<<4)) {
+	if(unlikely(op->undecoded.raw_instruction & (1<<4))) {
 		switch (BITS_SHIFT(op->undecoded.raw_instruction, 24, 23)) {
 			case 0:
 				/* parallel add/subtract */
-				bad_decode(op);
+				unimplemented(op, "parallel add/sub");
+				break;
 			case 1:
-				/* halfword pack */
-				/* word saturate */
-				/* parallel halfword saturate */
-				/* byte reverse word */
-				/* byte reverse packed halfword */
-				/* byte reverse signed halfword */
-				/* select bytes */
-				/* sign/zero extend with add */
-				bad_decode(op);
+				if (BITS_SHIFT(op->undecoded.raw_instruction, 7, 4) == 0x7) {
+					/* sign/zero extend with add */
+					unimplemented(op, "sign/zero extend with add");
+				} else {
+					if (BIT(op->undecoded.raw_instruction, 21) && BITS_SHIFT(op->undecoded.raw_instruction, 5, 4) == 1) {
+						/* word saturate */
+						unimplemented(op, "word saturate");
+					} else {
+						switch (BITS_SHIFT(op->undecoded.raw_instruction, 22, 20)) {
+							case 0:
+								if (BITS_SHIFT(op->undecoded.raw_instruction, 5, 4) == 1) {
+									/* halfword pack */
+									unimplemented(op, "halfword pack");
+								} else if (BITS_SHIFT(op->undecoded.raw_instruction, 7, 4) == 0xb) {
+									/* select bytes */
+									unimplemented(op, "select bytes");
+								} else {
+									op_undefined(op);
+								}
+								break;
+							case 2:
+							case 5:
+								if (BITS_SHIFT(op->undecoded.raw_instruction, 7, 4) == 0x3) {
+									/* parallel halfword saturate */
+									unimplemented(op, "parallel halfword saturate");
+								} else {
+									op_undefined(op);
+								}
+								break;
+							case 3:
+								if (BITS_SHIFT(op->undecoded.raw_instruction, 7, 4) == 0x3) {
+									/* byte reverse word */
+									unimplemented(op, "byte reverse word");
+								} else if (BITS_SHIFT(op->undecoded.raw_instruction, 7, 4) == 0xb) {
+									/* byte reverse packed halfword */
+									unimplemented(op, "byte reverse packed halfword");
+								} else {
+									op_undefined(op);
+								}
+								break;
+							case 7:
+								if (BITS_SHIFT(op->undecoded.raw_instruction, 7, 4) == 0x3) {
+									/* byte reverse signed halfword */
+									unimplemented(op, "byte reverse signed halfword");
+								} else {
+									op_undefined(op);
+								}
+								break;
+							default:
+								op_undefined(op);
+						}
+					}
+				}
+				break;
 			case 2:
 				/* type 3 multiplies */
-				bad_decode(op);
+				unimplemented(op, "type 3 multiply");
+				break;
 			case 3:
 				/* unsigned sum of absolute differences */
 				/* unsigned sum of absolute differences + accumulator */
-				bad_decode(op);
+				unimplemented(op, "usigned sum of absolue difference");
+				break;
 		}
 		return;
 	}
@@ -246,33 +294,33 @@ void arm_decode_into_uop(struct uop *op)
 		if (opcode1 == 0x10) {
 			if (BIT(op->undecoded.raw_instruction, 16)) {
 				// XXX SETEND
-				bad_decode(op);
+				unimplemented(op, "setend");
 			} else {
 				// XXX CPS
-				bad_decode(op);
+				unimplemented(op, "cps");
 			}
 		} else if((opcode1 & 0xd7) == 0x55) {
 			op_pld(op); // pld
 		} else if((opcode1 & 0xe5) == 0x84) {
 			// XXX SRS
-			bad_decode(op);
+			unimplemented(op, "srs");
 		} else if((opcode1 & 0xe5) == 0x81) {
 			// XXX RFE
-			bad_decode(op);
+			unimplemented(op, "rfe");
 		} else if ((opcode1 & 0xe0) == 0xa0) {
 			op_branch(op); // blx (address form)
 		} else if((opcode1 & 0xe0) == 0xc0) {
 			// XXX stc2/ldc2
-			bad_decode(op);
+			unimplemented(op, "lcd2/stc2");
 		} else if((opcode1 & 0xf0) == 0xe0) {
 			// XXX cdp2/mcr2/mrc2
-			bad_decode(op);
+			unimplemented(op, "cdp2/mcr2/mrc2");
 		} else if((opcode1 & 0xf0) == 0xf0) {
 			// genuine undefined instructions
 			op_undefined(op);
 		} else {
 			// something slipped through the cracks
-			bad_decode(op);
+			op_undefined(op);
 		}
 	} else {
 		ins_group_table[BITS_SHIFT(op->undecoded.raw_instruction, 27, 25)](op);
