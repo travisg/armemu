@@ -108,16 +108,20 @@ static void prim_group_0_decode(struct uop *op)
 				case 0: // multiply, multiply long, swap
 					switch(op->undecoded.raw_instruction & (3<<23)) {
 						case 0:
-							op_mul(op); // mul/mla
+							if (BIT(op->undecoded.raw_instruction, 22))
+								bad_decode(op); // umaal, armv6
+							else
+								op_mul(op); // mul/mla
 							break;
 						case (1<<23):
-							op_mull(op); // umull/smull/umlal/smlal
+							op_mull(op); // umull/smull/umlal/smlal, umaal
 							break;
 						case (2<<23):
 							op_swap(op); // swp/swpb
 							break;
-						default:
-							op_undefined(op);
+						case (3<<23):
+							bad_decode(op); // armv6 ldrex/strex
+							break;
 					}
 					break;
 				case (1<<5): // load/store halfword
@@ -156,9 +160,30 @@ static void prim_group_1_decode(struct uop *op)
 // opcode[27:25] == 0b011
 static void prim_group_3_decode(struct uop *op)
 {
-	/* look for a particular undefined form */
+	/* look for armv6 media instructions */
 	if(op->undecoded.raw_instruction & (1<<4)) {
-		op_undefined(op);
+		switch (BITS_SHIFT(op->undecoded.raw_instruction, 24, 23)) {
+			case 0:
+				/* parallel add/subtract */
+				bad_decode(op);
+			case 1:
+				/* halfword pack */
+				/* word saturate */
+				/* parallel halfword saturate */
+				/* byte reverse word */
+				/* byte reverse packed halfword */
+				/* byte reverse signed halfword */
+				/* select bytes */
+				/* sign/zero extend with add */
+				bad_decode(op);
+			case 2:
+				/* type 3 multiplies */
+				bad_decode(op);
+			case 3:
+				/* unsigned sum of absolute differences */
+				/* unsigned sum of absolute differences + accumulator */
+				bad_decode(op);
+		}
 		return;
 	}
 
@@ -205,7 +230,7 @@ const decode_stage_func ins_group_table[] = {
 	prim_group_0_decode, // data processing, multiply, load/store halfword/two words
 	prim_group_1_decode, // data processing immediate and move immediate to status reg
 	op_load_store,       // load/store immediate offset
-	prim_group_3_decode, // load/store register offset
+	prim_group_3_decode, // load/store register offset, armv6 media
 	op_load_store_multiple, // load/store multiple 
 	op_branch,  // branch op
 	prim_group_6_decode, // coprocessor load/store and double reg transfers
@@ -216,9 +241,25 @@ void arm_decode_into_uop(struct uop *op)
 {
 	/* look for the unconditional instruction extension space. page A3-34 */
 	// XXX are these "always" instructions on V4?
-	if (((op->undecoded.raw_instruction >> COND_SHIFT) & COND_MASK) == COND_SPECIAL) {
+	if (unlikely(((op->undecoded.raw_instruction >> COND_SHIFT) & COND_MASK) == COND_SPECIAL)) {
 		unsigned int opcode1 = BITS_SHIFT(op->undecoded.raw_instruction, 27, 20);
-		if ((opcode1 & 0xe0) == 0xa0) {
+		if (opcode1 == 0x10) {
+			if (BIT(op->undecoded.raw_instruction, 16)) {
+				// XXX SETEND
+				bad_decode(op);
+			} else {
+				// XXX CPS
+				bad_decode(op);
+			}
+		} else if((opcode1 & 0xd7) == 0x55) {
+			op_pld(op); // pld
+		} else if((opcode1 & 0xe5) == 0x84) {
+			// XXX SRS
+			bad_decode(op);
+		} else if((opcode1 & 0xe5) == 0x81) {
+			// XXX RFE
+			bad_decode(op);
+		} else if ((opcode1 & 0xe0) == 0xa0) {
 			op_branch(op); // blx (address form)
 		} else if((opcode1 & 0xe0) == 0xc0) {
 			// XXX stc2/ldc2
@@ -226,11 +267,12 @@ void arm_decode_into_uop(struct uop *op)
 		} else if((opcode1 & 0xf0) == 0xe0) {
 			// XXX cdp2/mcr2/mrc2
 			bad_decode(op);
-		} else if((opcode1 & 0xd7) == 0x55) {
-			op_pld(op); // pld
-		} else {
+		} else if((opcode1 & 0xf0) == 0xf0) {
 			// genuine undefined instructions
 			op_undefined(op);
+		} else {
+			// something slipped through the cracks
+			bad_decode(op);
 		}
 	} else {
 		ins_group_table[BITS_SHIFT(op->undecoded.raw_instruction, 27, 25)](op);
