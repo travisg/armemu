@@ -50,7 +50,7 @@ static const struct cpu_types cpu_types[] = {
 	{ "armv4",     ARM_V4,  ARM7,  FALSE, FALSE },
 	{ "armv5",     ARM_V5,  ARM9,  TRUE,  TRUE },
 	{ "armv5e",    ARM_V5e, ARM9,  TRUE,  TRUE },
-	{ "armv6",     ARM_V6,  ARM9,  TRUE,  TRUE }, // not correct, but no arm11 support yet
+	{ "armv6",     ARM_V6,  ARM9,  TRUE,  TRUE },
 
 	{ "arm7tdmi",  ARM_V4,  ARM7,  FALSE, FALSE },
 	{ "arm7",      ARM_V4,  ARM7,  FALSE, FALSE },
@@ -59,6 +59,7 @@ static const struct cpu_types cpu_types[] = {
 	{ "arm9e",     ARM_V5e, ARM9e, TRUE,  TRUE },
 	{ "arm926ejs", ARM_V5e, ARM9e, TRUE,  TRUE },
 	{ "arm926",    ARM_V5e, ARM9e, TRUE,  TRUE },
+	{ "arm1136",   ARM_V6,   ARM9e, TRUE,  TRUE },
 
 	{ NULL, 0, 0, 0, 0 },
 };

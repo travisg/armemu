@@ -222,6 +222,7 @@ const char *uop_opcode_to_str(int opcode)
 		OP_TO_STR(MULTIPLY);
 		OP_TO_STR(MULTIPLY_LONG);
 		OP_TO_STR(COUNT_LEADING_ZEROS);
+		OP_TO_STR(EXTEND);
 		OP_TO_STR(MOVE_TO_SR_IMM);
 		OP_TO_STR(MOVE_TO_SR_REG);
 		OP_TO_STR(MOVE_FROM_SR);
@@ -2522,6 +2523,51 @@ static inline __ALWAYS_INLINE void uop_count_leading_zeros(struct uop *op)
 #endif
 }
 
+static inline __ALWAYS_INLINE void uop_extend(struct uop *op)
+{
+	word val;
+
+	ASSERT_VALID_REG(op->extend.source_reg);
+	ASSERT_VALID_REG(op->extend.dest_reg);
+	ASSERT_VALID_REG(op->extend.accumulate_reg);
+	ASSERT_VALID_REG(op->extend.rotate <= 24);
+
+	// get the value we're extending
+	val = get_reg(op->extend.source_reg);
+
+	// rotate it before doing anything
+	val = ROR(val, op->extend.rotate);
+
+	if (unlikely(op->flags & EXTEND_PACKED16)) {
+		// XXX do packed stuff here
+		cpu_panic("unimplemented 16bit packed extend instruction\n");
+	} else {
+		if (op->flags & EXTEND_HALFWORD) {
+			if (op->flags & EXTEND_SIGNED)
+				val = SIGN_EXTEND(val, 15);
+			else
+				val = BITS(val, 15, 0);
+		} else {
+			if (op->flags & EXTEND_SIGNED)
+				val = SIGN_EXTEND(val, 7);
+			else
+				val = BITS(val, 7, 0);
+		}
+	}
+
+	// accumulate
+	if (op->flags & EXTEND_ACCUMULATE) {
+		val += get_reg(op->extend.accumulate_reg);
+	}
+	
+	// put the result back
+	put_reg(op->extend.dest_reg, val);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_MISC);
+#endif
+}
+
 static inline __ALWAYS_INLINE void uop_move_to_sr_imm(struct uop *op) 
 {
 	reg_t old_psr, new_psr;
@@ -3006,6 +3052,9 @@ int uop_dispatch_loop(void)
 				break;
 		    case COUNT_LEADING_ZEROS:
 				uop_count_leading_zeros(op);
+				break;
+		    case EXTEND:
+				uop_extend(op);
 				break;
 			case MOVE_TO_SR_IMM:
 				uop_move_to_sr_imm(op);

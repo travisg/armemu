@@ -40,7 +40,8 @@ enum arm_instruction_set {
 	ARM_V4 = 0,
 	ARM_V5,
 	ARM_V5e,
-	ARM_V6
+	ARM_V6,
+	ARM_V7
 };
 
 enum arm_core {

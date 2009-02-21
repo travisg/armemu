@@ -101,6 +101,9 @@ enum uop_opcode {
 	// count leading zeros
 	COUNT_LEADING_ZEROS,
 
+	// extend instructions
+	EXTEND,
+
 	// move from/to status register
 	MOVE_TO_SR_IMM,
 	MOVE_TO_SR_REG,
@@ -256,6 +259,18 @@ struct uop {
 			byte dest_reg;
 			byte source_reg;
 		} count_leading_zeros;
+
+		// extend
+#define EXTEND_HALFWORD						0x1 // extend a halfword instead of byte 
+#define EXTEND_SIGNED 						0x2
+#define EXTEND_ACCUMULATE					0x4
+#define EXTEND_PACKED16						0x8 // operate on both 16bit halves in parallel
+		struct {
+			byte dest_reg;
+			byte source_reg;
+			byte accumulate_reg;
+			byte rotate;
+		} extend;
 
 		// move from/to status register
 #define UOPMSR_R_BIT						0x1 // access to spsr instead of cpsr

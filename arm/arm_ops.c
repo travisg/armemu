@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 Travis Geiselbrecht
+ * Copyright (c) 2005-2009 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -281,6 +281,63 @@ void op_swi(struct uop *op)
 
 	CPU_TRACE(5, "swi 0x%x\n", ins & 0x00ffffff);	
 }
+
+void op_extend(struct uop *op)
+{
+	word ins = op->undecoded.raw_instruction;
+	int Rd, Rn, Rm;
+	int rotate;
+
+	/* handles the following instructions:
+	 * uxth, uxtb16, uxtb, 
+	 * uxtah, uxtab16, uxtab,
+	 * sxth, sxtb16, sxtb,
+	 * sxtah, sxtab16, sxtab
+	 */
+
+	// only supported on ARMv6+
+	if(get_isa() < ARM_V6) {
+		op_undefined(op);
+		return;
+	}
+
+	// decode the instruction
+	/* op 7 111 : utxh
+	 * op 6 110 : utxb
+	 * op 4 100 : uxtb16
+	 * op 3 011 : sxth
+	 * op 2 010 : sxtb
+	 * op 0 000 : sxtb16
+	 */
+	Rn = BITS_SHIFT(ins, 19, 16);
+	Rd = BITS_SHIFT(ins, 15, 12);
+	Rm = BITS(ins, 3, 0);
+	rotate = BITS_SHIFT(ins, 11, 10);
+#define U        BIT(ins, 22)
+#define UNPACKED BIT(ins, 21)
+#define H        BIT(ins, 20)
+
+	// translate
+	op->opcode = EXTEND;
+	op->cond = (ins >> COND_SHIFT) & COND_MASK;
+	op->extend.dest_reg = Rd;
+	op->extend.source_reg = Rm;
+	op->extend.accumulate_reg = Rn;
+	op->extend.rotate = rotate * 8;
+	op->flags = (H ? EXTEND_HALFWORD : 0) | 
+				((Rn != 15) ? EXTEND_ACCUMULATE : 0) |
+				(U ? 0 : EXTEND_SIGNED) |
+				(UNPACKED ? 0 : EXTEND_PACKED16);
+
+	CPU_TRACE(5, "\t\top_extend: U %d H %d PACK %d Rd %d Rn %d Rm %d rot %d\n", 
+		U ? 1 : 0, H ? 1 : 0, UNPACKED ? 0 : 1,
+		Rd, Rn, Rm, op->extend.rotate);
+
+#undef H
+#undef UNPACKED
+#undef U
+}
+
 
 void op_undefined(struct uop *op)
 {

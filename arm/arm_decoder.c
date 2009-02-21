@@ -170,7 +170,7 @@ static void prim_group_3_decode(struct uop *op)
 			case 1:
 				if (BITS_SHIFT(op->undecoded.raw_instruction, 7, 4) == 0x7) {
 					/* sign/zero extend with add */
-					unimplemented(op, "sign/zero extend with add");
+					op_extend(op);
 				} else {
 					if (BIT(op->undecoded.raw_instruction, 21) && BITS_SHIFT(op->undecoded.raw_instruction, 5, 4) == 1) {
 						/* word saturate */
