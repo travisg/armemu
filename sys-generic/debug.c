@@ -97,7 +97,10 @@ static word debug_get_put(armaddr_t address, word data, int size, int put)
             dump_registers();
             return 0;
 		case DEBUG_HALT:
-			panic_cpu("debug halt\n");
+			if (data == 1)
+				panic_cpu("debug halt\n");
+			else
+				exit(1);
 			return 0;
 		case DEBUG_MEMDUMPADDR:
 			debug.memory_dump_addr = data;
