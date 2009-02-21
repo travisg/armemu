@@ -1597,19 +1597,18 @@ static inline __ALWAYS_INLINE void uop_data_processing_reg_shift(struct uop *op)
 				shifter_carry_out = BIT(temp_word2, 31);
 			}
 			break;
-		case 3: // ROR by reg (page A5-16)
+		case 3: { // ROR by reg (page A5-16)
+			word lower_4bits = BITS(temp_word3, 4, 0);
+			shifter_operand = ROR(temp_word2, lower_4bits);
 			if(temp_word3 == 0) {
-				shifter_operand = temp_word2;
 				shifter_carry_out = get_condition(PSR_CC_CARRY);
-			} else if(BITS(temp_word3, 4, 0) == 0) {
-				shifter_operand = temp_word2;
+			} else if(lower_4bits == 0) {
 				shifter_carry_out = BIT(temp_word2, 31);
 			} else { // temp_word3 & 0x1f > 0
-				word lower_4bits = BITS(temp_word3, 4, 0);
-				shifter_operand = ROR(temp_word2, lower_4bits);
 				shifter_carry_out = BIT(temp_word2, lower_4bits - 1);
 			}
 			break;
+		}
 	}
 
 #if COUNT_CYCLES
@@ -2269,6 +2268,7 @@ static inline __ALWAYS_INLINE void uop_ror_reg(struct uop *op)
 
 	a = get_reg(op->simple_dp_reg.source_reg);
 	rotate = get_reg(op->simple_dp_reg.source2_reg);
+	rotate = BITS(rotate, 4, 0);
 
 	result = ROR(a, rotate);
 
@@ -2292,15 +2292,13 @@ static inline __ALWAYS_INLINE void uop_ror_reg_s(struct uop *op)
 	rotate = get_reg(op->simple_dp_reg.source2_reg);
 	rotate_lower_4_bits = BITS(rotate, 4, 0);
 
+	result = ROR(a, rotate_lower_4_bits);
 	if(BITS(rotate, 7, 0) == 0) {
 		carry = get_condition(PSR_CC_CARRY);
-		result = a; // result is unaffected
 	} else if(rotate_lower_4_bits == 0) {
 		carry = BIT(a, 31);
-		result = a; // result is unaffected
 	} else {
 		carry = BIT(a, rotate_lower_4_bits - 1);
-		result = ROR(a, rotate_lower_4_bits);
 	}
 
 	set_NZ_condition(result);
