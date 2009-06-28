@@ -32,7 +32,10 @@
 #include <config.h>
 
 #include <sys/ioctl.h>
-#include <termio.h>
+#include <termios.h>
+
+static struct termios oldstdin;
+static struct termios oldstdout;
 
 static void usage(int argc, char **argv)
 {
@@ -47,6 +50,37 @@ static int init_sdl(void)
 
 	return SDL_Init(SDL_INIT_TIMER);
 }
+
+static void resetconsole(void)
+{
+	tcsetattr(0, TCSANOW, &oldstdin);
+	tcsetattr(1, TCSANOW, &oldstdout);
+}
+
+static void setconsole(void)
+{
+	struct termios t;
+
+	tcgetattr(0, &oldstdin);
+	tcgetattr(1, &oldstdout);
+
+	atexit(&resetconsole);
+
+	t = oldstdin;
+	t.c_lflag = ISIG; // no input processing
+	// Don't interpret various control characters, pass them through instead
+	t.c_cc[VINTR] = t.c_cc[VQUIT] = t.c_cc[VSUSP] = '\0';
+	t.c_cc[VMIN]  = 0; // nonblocking read
+	t.c_cc[VTIME] = 0; // nonblocking read
+	tcsetattr(0, TCSANOW, &t);
+
+	t = oldstdout;
+	t.c_lflag = ISIG; // no output processing
+	// Don't interpret various control characters, pass them through instead
+	t.c_cc[VINTR] = t.c_cc[VQUIT] = t.c_cc[VSUSP] = '\0';
+	tcsetattr(1, TCSANOW, &t);
+}
+
 
 int main(int argc, char **argv)
 {
@@ -83,14 +117,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// turn off line echo
-	struct termio tty, oldtty;
-	ioctl(0, TCGETA, &oldtty);
-	tty = oldtty;
-	tty.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL);
-	tty.c_cc[VMIN]  = 0; // nonblocking read
-	tty.c_cc[VTIME] = 0; // nonblocking read
-	ioctl(0, TCSETA, &tty);
+	setconsole();
 
 	// bring up the SDL system
 	if (init_sdl() < 0) {
