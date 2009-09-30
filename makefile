@@ -25,14 +25,15 @@ endif
 
 # Darwin (Mac OS X) too
 ifeq ($(UNAME),Darwin)
-CFLAGS += -DASM_LEADING_UNDERSCORES=1 -mdynamic-no-pic -fast -I/sw/include
-LDLIBS += -framework Cocoa -L/sw/lib -lSDLmain -lstdc++
+CFLAGS += -DASM_LEADING_UNDERSCORES=1 -mdynamic-no-pic -fast -I/sw/include -I/opt/local/include
+LDLIBS += -framework Cocoa -L/sw/lib -L/opt/local/lib -lSDLmain -lstdc++
 endif
 
 ifeq ($(UNAME),Linux)
 ifeq ($(ARCH),ppc)
 CFLAGS += -fno-pic -mregnames
 CFLAGS += -mcpu=7450
+CFLAGS += -DWITH_TUNTAP=1
 endif
 ifeq ($(ARCH),ppc64)
 CFLAGS += -mregnames -fno-pic

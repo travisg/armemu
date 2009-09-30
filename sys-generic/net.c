@@ -38,6 +38,7 @@
 #include <util/endian.h>
 #include <util/atomic.h>
 
+#if WITH_TUNTAP
 /* tuntap stuff */
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -203,11 +204,13 @@ static int open_tun(const char *dev)
 	}
 	return fd;
 }
+#endif // WITH_TUNTAP
 
 int initialize_network(void)
 {
 	const char *str;
 
+#if WITH_TUNTAP
 	network = calloc(sizeof(*network), 1);
 
 	// install the network register handlers
@@ -229,6 +232,7 @@ int initialize_network(void)
 
 	// start a network reader/writer thread
 	SDL_CreateThread(&network_thread, NULL);
+#endif
 
 	return 0;		
 }
