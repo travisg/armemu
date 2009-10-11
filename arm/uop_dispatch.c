@@ -486,7 +486,7 @@ static inline __ALWAYS_INLINE void uop_decode_me_arm(struct uop *op)
 {
 	// call the arm decoder and set the pc back to retry this instruction
 	ASSERT(cpu.cp_pc != NULL);
-	UOP_TRACE(6, "decoding arm opcode 0x%08x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc);
+	UOP_TRACE(6, "decoding arm opcode 0x%08x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc - 4);
 	arm_decode_into_uop(op);
 	cpu.pc -= 4; // back the instruction pointer up to retry this instruction
 	cpu.cp_pc--;
@@ -497,7 +497,7 @@ static inline __ALWAYS_INLINE void uop_decode_me_thumb(struct uop *op)
 {
 	// call the arm decoder and set the pc back to retry this instruction
 	ASSERT(cpu.cp_pc != NULL);
-	UOP_TRACE(6, "decoding thumb opcode 0x%04x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc);
+	UOP_TRACE(6, "decoding thumb opcode 0x%04x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc - 2);
 	thumb_decode_into_uop(op);
 	cpu.pc -= 2; // back the instruction pointer up to retry this instruction
 	cpu.cp_pc--;
