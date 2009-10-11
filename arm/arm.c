@@ -60,6 +60,7 @@ static const struct cpu_types cpu_types[] = {
 	{ "arm926ejs", ARM_V5e, ARM9e, TRUE,  TRUE },
 	{ "arm926",    ARM_V5e, ARM9e, TRUE,  TRUE },
 	{ "arm1136",   ARM_V6,  ARM9e, TRUE,  TRUE },
+	{ "cortex-a8", ARM_V7,	ARM9e, TRUE,  TRUE },
 
 	{ NULL, 0, 0, 0, 0 },
 };

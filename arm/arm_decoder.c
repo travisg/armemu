@@ -151,8 +151,8 @@ static void prim_group_1_decode(struct uop *op)
 		case 0x12: case 0x16: // MSR, immediate form
 			op_msr(op);
 			break;
-		case 0x10: case 0x14: // undefined
-			op_undefined(op);
+		case 0x10: case 0x14: // movw,movt (armv7)
+			op_movw_movt(op);
 			break;
 	}
 }

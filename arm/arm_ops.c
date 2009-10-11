@@ -338,6 +338,43 @@ void op_extend(struct uop *op)
 #undef U
 }
 
+void op_movw_movt(struct uop *op)
+{
+	word ins = op->undecoded.raw_instruction;
+	int Rd;
+	word immed;
+
+	/* handles the following instructions:
+	 * movw, movt
+	 */
+
+	// only supported on ARMv7
+	if(get_isa() < ARM_V7) {
+		op_undefined(op);
+		return;
+	}
+
+	Rd = BITS_SHIFT(ins, 15, 12);
+	immed = (BITS(ins, 19, 16) >> 4) | BITS(ins, 11, 0);
+#define T		BIT(ins, 22)
+
+	op->cond = (ins >> COND_SHIFT) & COND_MASK;
+	op->simple_dp_imm.dest_reg = Rd;
+	op->simple_dp_imm.immediate = immed;
+
+	if (T) {
+		// movt, 16bit immediate into high 16bits of register
+		op->opcode = MOV_IMM_TOP;
+		CPU_TRACE(6, "\t\tMOV_IMM_TOP: Rd %d immed %d\n", Rd, immed);
+	} else {
+		// movw, 16bit zero extended immediate into register
+		op->opcode = MOV_IMM;
+		CPU_TRACE(6, "\t\tMOV_IMM: Rd %d immed %d\n", Rd, immed);
+	}
+
+#undef T
+}
+
 
 void op_undefined(struct uop *op)
 {

@@ -56,6 +56,7 @@ enum uop_opcode {
 	// special versions of some of the above instructions
 	MOV_IMM,					// mov and mvn
 	MOV_IMM_NZ,					// mov and mvn, sets NZ condition bits
+	MOV_IMM_TOP,				// movt
 	MOV_REG,					// mov
 	CMP_IMM_S,					// cmp and cmn, sets full conditions
 	CMP_REG_S,					// cmp, sets full conditions

@@ -185,6 +185,7 @@ const char *uop_opcode_to_str(int opcode)
 		OP_TO_STR(DATA_PROCESSING_REG_SHIFT);
 		OP_TO_STR(MOV_IMM);
 		OP_TO_STR(MOV_IMM_NZ);
+		OP_TO_STR(MOV_IMM_TOP);
 		OP_TO_STR(MOV_REG);
 		OP_TO_STR(CMP_IMM_S);
 		OP_TO_STR(CMP_REG_S);
@@ -1681,6 +1682,18 @@ static inline __ALWAYS_INLINE void uop_mov_imm_nz(struct uop *op)
 #endif
 }
 
+// simple load of immediate into register, PC may not be target
+static inline __ALWAYS_INLINE void uop_mov_imm_top(struct uop *op) 
+{
+	word val = get_reg(op->simple_dp_imm.dest_reg);
+	val = BITS(val, 15, 0) | op->simple_dp_imm.immediate << 16;
+	put_reg_nopc(op->simple_dp_imm.dest_reg, val);
+
+#if COUNT_ARM_OPS
+	inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
 // simple mov from register to register, PC may not be target
 static inline __ALWAYS_INLINE void uop_mov_reg(struct uop *op) 
 {
@@ -2941,6 +2954,9 @@ int uop_dispatch_loop(void)
 				break;
 			case MOV_IMM_NZ: // move immediate value into register, set NZ condition
 				uop_mov_imm_nz(op);
+				break;
+			case MOV_IMM_TOP: // move immediate 16 bit value into top half of register
+				uop_mov_imm_top(op);
 				break;
 			case MOV_REG: // move one register to another
 				uop_mov_reg(op);

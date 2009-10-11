@@ -49,6 +49,7 @@ void op_coproc_data_processing(struct uop *op);
 void op_coproc_load_store(struct uop *op);
 void op_no_coproc_installed(struct uop *op, int cp_num);
 void op_extend(struct uop *op);
+void op_movw_movt(struct uop *op);
 
 /* data processing opcode to string */
 const char *dp_op_to_str(int op);
