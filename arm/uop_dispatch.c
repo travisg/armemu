@@ -2540,7 +2540,7 @@ static inline __ALWAYS_INLINE void uop_extend(struct uop *op)
 
 	if (unlikely(op->flags & EXTEND_PACKED16)) {
 		// XXX do packed stuff here
-		cpu_panic("unimplemented 16bit packed extend instruction\n");
+		panic_cpu("unimplemented 16bit packed extend instruction\n");
 	} else {
 		if (op->flags & EXTEND_HALFWORD) {
 			if (op->flags & EXTEND_SIGNED)
