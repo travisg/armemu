@@ -23,6 +23,8 @@ int main(void)
 {
 	int i;
 	char c;
+
+//	*REG(DEBUG_HALT) = 1;
 	
 	cpufunc();
 
