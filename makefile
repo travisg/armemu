@@ -7,7 +7,7 @@ BUILDDIR := build-$(SYSTARGET)
 OBJDUMP := objdump
 
 # generic cflags
-CFLAGS := -O2 -g -Iinclude -Wall -W -Wno-unused-parameter -Wmissing-prototypes -Wno-multichar -finline $(PROFILE)
+CFLAGS := -O3 -g -Iinclude -Wall -W -Wno-unused-parameter -Wmissing-prototypes -Wno-multichar -finline $(PROFILE)
 LDFLAGS := -g $(PROFILE)
 LDLIBS := -lSDL
 
@@ -40,7 +40,7 @@ CFLAGS += -mregnames -fno-pic
 CFLAGS += -mcpu=970
 endif
 ifeq ($(ARCH),x86_64)
-CFLAGS += -march=k8
+CFLAGS += -march=native
 endif
 endif
 
