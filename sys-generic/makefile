@@ -7,5 +7,6 @@ OBJS	+= \
 	$(LOCALDIR)/net.o \
 	$(LOCALDIR)/pic.o \
 	$(LOCALDIR)/pit.o \
+	$(LOCALDIR)/blockdev.o \
 	$(LOCALDIR)/debug.o \
 	$(LOCALDIR)/sys.o

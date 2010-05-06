@@ -42,6 +42,7 @@ endif
 ifeq ($(ARCH),x86_64)
 CFLAGS += -march=native
 endif
+CFLAGS += -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 endif
 
 all:: $(BUILDDIR)/$(TARGET)$(BINEXT) $(BUILDDIR)/$(TARGET).lst

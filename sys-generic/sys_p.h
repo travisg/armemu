@@ -48,6 +48,9 @@ void console_keyup(SDLKey key);
 // network
 int initialize_network(void);
 
+// block device
+int initialize_blockdev(void);
+
 // debug  
 int initialize_debug(void);
 

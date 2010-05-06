@@ -47,6 +47,8 @@ int main(void)
 		puts("\tconsole\n");
 	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_NETWORK)
 		puts("\tnetwork\n");
+	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_BLOCKDEV)
+		puts("\tblockdevice\n");
 
 	read_cpu_id();
 
@@ -58,6 +60,20 @@ int main(void)
 	puts("setting timer\n");
 	*REG(PIT_INTERVAL) = 500;
 	*REG(PIT_START_PERIODIC) = 1;
+
+//	*REG(DEBUG_SET_TRACELEVEL_SYS) = 5;
+	*REG(BDEV_CMD_ADDR) = 0x200000;
+	*REG64(BDEV_CMD_OFF) = 1024;
+	*REG(BDEV_CMD_LEN) = 4096;
+	*REG(BDEV_CMD) = BDEV_CMD_ERASE;
+	*REG(BDEV_CMD) = BDEV_CMD_WRITE;
+	*REG(BDEV_CMD) = BDEV_CMD_READ;
+
+	*REG(BDEV_CMD_ADDR) = 0;
+	*REG64(BDEV_CMD_OFF) = 0;
+	*REG(BDEV_CMD_LEN) = 4096;
+	*REG(BDEV_CMD) = BDEV_CMD_WRITE;
+//	*REG(DEBUG_SET_TRACELEVEL_SYS) = 1;
 
 	puts("keyboard test:\n");
 	c = 'a';

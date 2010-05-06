@@ -72,6 +72,7 @@ static void load_feature_config(void)
 	sys.features |= has_sys_feature("console", FALSE) ? SYSINFO_FEATURE_CONSOLE : 0;
 	sys.features |= has_sys_feature("display", FALSE) ? SYSINFO_FEATURE_DISPLAY : 0;
 	sys.features |= has_sys_feature("network", FALSE) ? SYSINFO_FEATURE_NETWORK : 0;
+	sys.features |= has_sys_feature("block", FALSE) ? SYSINFO_FEATURE_BLOCKDEV : 0;
 }
 
 int initialize_system(void)
@@ -116,6 +117,11 @@ int initialize_system(void)
     if (sys.features & SYSINFO_FEATURE_NETWORK){
             // initialize the network (via tun/tap)
         initialize_network();
+    }
+
+    if (sys.features & SYSINFO_FEATURE_BLOCKDEV){
+            // initialize the block device
+        initialize_blockdev();
     }
 // debug device
     initialize_debug();
