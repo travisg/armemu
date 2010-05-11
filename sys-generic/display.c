@@ -165,15 +165,15 @@ int initialize_display(void)
 	// sanity check geometry
 	if (display.screen_x == 0 || display.screen_x > 4096) {
 		SYS_TRACE(0, "sys: display width out of range %d\n", display.screen_x);
-		exit(1);
+		return -1;
 	}
 	if (display.screen_y == 0 || display.screen_y > 4096) {
 		SYS_TRACE(0, "sys: display height out of range %d\n", display.screen_y);
-		exit(1);
+		return -1;
 	}
 	if (display.screen_depth != 16 && display.screen_depth != 32) {
 		SYS_TRACE(0, "sys: invalid display depth %d\n", display.screen_depth);
-		exit(1);
+		return -1;
 	}
 
 	// calculate size 
@@ -190,7 +190,7 @@ int initialize_display(void)
 	display.screen = SDL_SetVideoMode(display.screen_x, display.screen_y, display.screen_depth, SDL_HWSURFACE|SDL_DOUBLEBUF);
 	if (!display.screen) {
 		SYS_TRACE(0, "sys: error creating SDL surface\n");
-		exit(1);
+		return -1;
 	}
 	
 	SYS_TRACE(1, "created screen: w %d h %d pitch %d\n", display.screen->w, display.screen->h, display.screen->pitch);

@@ -217,18 +217,20 @@ int initialize_blockdev(void)
 	const char *str;
 
 	bdev = calloc(sizeof(*bdev), 1);
+	bdev->fd = -1;
 
 	install_mem_handler(BDEV_REGS_BASE, BDEV_REGS_SIZE, &bdev_regs_get_put, NULL);
 
 	str = get_config_key_string("block", "file", "");
-	printf("str '%s'\n", str);
+	if (strlen(str) == 0)
+		return -1;
 
-	bdev->fd = -1;
-	if (strlen(str) > 0) {
-		bdev->fd = open(str, O_RDWR);
-		bdev->length = 1024*1024; // XXX get stat
-		printf("fd %d\n", bdev->fd);
+	bdev->fd = open(str, O_RDWR);
+	if (bdev->fd < 0) {
+		SYS_TRACE(0, "sys: unable to open block device file '%s'\n", str);
+		return -1;
 	}
+	bdev->length = 1024*1024; // XXX get stat
 
 	return 0;		
 }

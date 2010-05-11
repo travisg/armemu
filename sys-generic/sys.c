@@ -78,6 +78,7 @@ static void load_feature_config(void)
 int initialize_system(void)
 {
 	unsigned int i;
+	int err;
 	
 	// create a cpu
 	initialize_cpu(get_config_key_string("cpu", "core", "arm7tdmi"));
@@ -104,29 +105,38 @@ int initialize_system(void)
 	initialize_mainmem(get_config_key_string("rom", "file", NULL), 
 			atol(get_config_key_string("rom", "address", "0")));
 
+	err = 0;
     if (sys.features & SYSINFO_FEATURE_DISPLAY){
             // initialize the display
-        initialize_display();
+        err = initialize_display();
+		if (err < 0)
+			return err;
     }
 
     if (sys.features & SYSINFO_FEATURE_CONSOLE){
             // initialize the console (keyboard)
-        initialize_console();
+        err = initialize_console();
+		if (err < 0)
+			return err;
     }
 
     if (sys.features & SYSINFO_FEATURE_NETWORK){
             // initialize the network (via tun/tap)
-        initialize_network();
+        err = initialize_network();
+		if (err < 0)
+			return err;
     }
 
     if (sys.features & SYSINFO_FEATURE_BLOCKDEV){
             // initialize the block device
-        initialize_blockdev();
+        err = initialize_blockdev();
+		if (err < 0)
+			return err;
     }
 // debug device
     initialize_debug();
     
-	return 0;
+	return err;
 }
 
 void install_mem_handler(armaddr_t base, armaddr_t len,

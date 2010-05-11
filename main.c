@@ -39,7 +39,7 @@ static struct termios oldstdout;
 
 static void usage(int argc, char **argv)
 {
-	printf("usage: %s [-b binary] [-c cpu type] [-r romfile] [-n cycle count]\n", argv[0]);
+	fprintf(stderr, "usage: %s [-b binary] [-c cpu type] [-r romfile] [-n cycle count]\n", argv[0]);
 
 	exit(1);
 }
@@ -121,12 +121,15 @@ int main(int argc, char **argv)
 
 	// bring up the SDL system
 	if (init_sdl() < 0) {
-		printf("error initializing sdl. aborting...\n");
+		fprintf(stderr, "error initializing sdl. aborting...\n");
 		return 1;
 	}
 
 	// initialize the system
-	initialize_system();
+	if (initialize_system() < 0) {
+		fprintf(stderr, "failed to initialize system, bailing\n");
+		return 1;
+	}
 
 	// start the system, should spawn a cpu thread
 	system_start();
