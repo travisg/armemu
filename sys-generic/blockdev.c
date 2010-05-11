@@ -65,7 +65,7 @@ static uint bdev_read(armaddr_t address, off_t offset, size_t length)
 		size_t tohandle = MIN(sizeof(buf), length);
 
 		ssize_t err = read(bdev->fd, buf, tohandle);
-		if (err != tohandle)
+		if (err != (ssize_t)tohandle)
 			return BDEV_CMD_ERR_GENERAL;
 
 		size_t i;
@@ -103,7 +103,7 @@ static uint bdev_write(armaddr_t address, off_t offset, size_t length)
 			*(word *)(&buf[i]) = sys_read_mem_byte(address + i);
 
 		ssize_t err = write(bdev->fd, buf, tohandle);
-		if (err != tohandle)
+		if (err != (ssize_t)tohandle)
 			return BDEV_CMD_ERR_GENERAL;
 
 		length -= tohandle;
