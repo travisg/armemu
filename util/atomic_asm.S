@@ -115,7 +115,7 @@ GLOBAL(atomic_add)
 FUNCTION(atomic_add):
 	movl		%esi,%eax		/* incr -> eax */
 	lock
-	xaddl	%eax,(%esi)		/* atomically add incr to *val */
+	xaddl	%eax,(%rsi)		/* atomically add incr to *val */
 							/* old value is in eax */
 	ret
 
@@ -123,12 +123,12 @@ FUNCTION(atomic_add):
 GLOBAL(atomic_and)
 FUNCTION(atomic_and):
 1:
-	movl		(%edi),%eax		/* *val -> temp2 */
+	movl		(%rdi),%eax		/* *val -> temp2 */
 	movl		%esi,%ecx		/* incr -> temp */
 	andl		%eax,%ecx		/* temp &= temp2 */
 
 	lock
-	cmpxchgl	%ecx,(%edi) /*,%eax*/	/* if temp2 is same as *val, temp -> *val */
+	cmpxchgl	%ecx,(%rdi) /*,%eax*/	/* if temp2 is same as *val, temp -> *val */
 							/* old value is in eax */
 
 	jnz		1b			/* if it didn't succeed, try again */
@@ -138,12 +138,12 @@ FUNCTION(atomic_and):
 GLOBAL(atomic_or)
 FUNCTION(atomic_or):
 1:
-	movl		(%edi),%eax		/* *val -> temp2 */
+	movl		(%rdi),%eax		/* *val -> temp2 */
 	movl		%esi,%ecx		/* incr -> temp */
 	orl		%eax,%ecx		/* temp |= temp2 */
 
 	lock
-	cmpxchgl	%ecx,(%edi) /*,%eax*/	/* if temp2 is same as *val, temp -> *val */
+	cmpxchgl	%ecx,(%rdi) /*,%eax*/	/* if temp2 is same as *val, temp -> *val */
 							/* old value is in eax */
 
 	jnz			1b			/* if it didn't succeed, try again */
@@ -153,7 +153,7 @@ FUNCTION(atomic_or):
 GLOBAL(atomic_set)
 FUNCTION(atomic_set):
 	movl		%esi,%eax		/* set_to -> eax */
-	xchg		%eax,(%edi)		/* *val += set_to */
+	xchg		%eax,(%rdi)		/* *val += set_to */
 							/* old value is in eax */
 	ret
 
@@ -163,7 +163,7 @@ FUNCTION(test_and_set):
 	movl		%edx,%eax		/* test_val -> eax */
 
 	lock
-	cmpxchgl	%esi,(%edi) /*,%eax*/	/* if test_val is same as *val, set_to -> *val */
+	cmpxchgl	%esi,(%rdi) /*,%eax*/	/* if test_val is same as *val, set_to -> *val */
 							/* old value is in eax */
 	ret
 #endif
