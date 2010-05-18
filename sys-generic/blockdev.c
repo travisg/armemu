@@ -24,9 +24,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
@@ -230,7 +234,20 @@ int initialize_blockdev(void)
 		SYS_TRACE(0, "sys: unable to open block device file '%s'\n", str);
 		return -1;
 	}
-	bdev->length = 1024*1024; // XXX get stat
+
+	/* existing file/device, get length */
+	struct stat st;
+	fstat(bdev->fd, &st);
+
+	if (st.st_mode & S_IFBLK) {
+		long blocks = 0;
+		ioctl(bdev->fd, BLKGETSIZE, &blocks);
+
+		bdev->length = (uint64_t)blocks * 512;
+	} else {
+		bdev->length = st.st_size;
+	}
+	SYS_TRACE(0, "sys: bdev fd %d, len %lld\n", bdev->fd, bdev->length);
 
 	return 0;		
 }
