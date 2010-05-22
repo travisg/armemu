@@ -29,9 +29,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <sys/ioctl.h>
-#include <linux/fs.h>
-
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
 
@@ -41,6 +38,11 @@
 #include "sys_p.h"
 #include <util/endian.h>
 #include <util/atomic.h>
+
+#ifdef __LINUX
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#endif
 
 static struct bdev {
 	int fd;
@@ -239,12 +241,15 @@ int initialize_blockdev(void)
 	struct stat st;
 	fstat(bdev->fd, &st);
 
+#ifdef __LINUX
 	if (st.st_mode & S_IFBLK) {
 		long blocks = 0;
 		ioctl(bdev->fd, BLKGETSIZE, &blocks);
 
 		bdev->length = (uint64_t)blocks * 512;
-	} else {
+	} else
+#endif
+	{
 		bdev->length = st.st_size;
 	}
 	SYS_TRACE(0, "sys: bdev fd %d, len %lld\n", bdev->fd, bdev->length);
