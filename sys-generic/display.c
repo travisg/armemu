@@ -89,7 +89,7 @@ static word display_get_put(armaddr_t address, word data, int size, int put)
 
 	address -= DISPLAY_FRAMEBUFFER;
 
-	if(address > DISPLAY_SIZE)
+	if(unlikely(address > DISPLAY_SIZE))
 		SYS_TRACE(0, "sys: display_get_put with invalid address 0x%08x\n", address);
 
 	ptr = display.fb + address;
@@ -132,7 +132,7 @@ static int display_thread_entry(void *args)
 	SDL_Surface *surface = display.screen;
 
 	for(;;) {
-		SDL_Delay(100);
+		SDL_Delay(20);
 	
 		// is the surface dirty?
 		if(atomic_set(&display.dirty, 0)) {			
