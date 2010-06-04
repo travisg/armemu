@@ -67,13 +67,13 @@ static word display_regs_get_put(armaddr_t address, word data, int size, int put
 
 	switch (address) {
 		case DISPLAY_WIDTH:
-			ret = DEFAULT_SCREEN_X;
+			ret = display.screen_x;
 			break;
 		case DISPLAY_HEIGHT:
-			ret = DEFAULT_SCREEN_Y;
+			ret = display.screen_y;
 			break;
 		case DISPLAY_BPP:
-			ret = DEFAULT_SCREEN_DEPTH;
+			ret = display.screen_depth;
 			break;
 		default:
 			ret = 0;
