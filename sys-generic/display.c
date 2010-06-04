@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2006 Travis Geiselbrecht
+ * Copyright (c) 2005-2010 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -60,12 +60,27 @@ static struct display {
 
 static word display_regs_get_put(armaddr_t address, word data, int size, int put)
 {
+	word ret;
+
 	SYS_TRACE(5, "sys: display_regs_get_put at 0x%08x, data 0x%08x, size %d, put %d\n", 
 		address, data, size, put);
 
-	// XXX implement some control regs (x, y, commands, etc)
+	switch (address) {
+		case DISPLAY_WIDTH:
+			ret = DEFAULT_SCREEN_X;
+			break;
+		case DISPLAY_HEIGHT:
+			ret = DEFAULT_SCREEN_Y;
+			break;
+		case DISPLAY_BPP:
+			ret = DEFAULT_SCREEN_DEPTH;
+			break;
+		default:
+			ret = 0;
+	}
 
-	return 0;
+
+	return ret;
 }
 
 static word display_get_put(armaddr_t address, word data, int size, int put)
