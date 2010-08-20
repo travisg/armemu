@@ -2,6 +2,7 @@
 #include "text.h"
 #include "console.h"
 #include "memmap.h"
+#include "block.h"
 
 static int has_display = 0;
 
@@ -77,6 +78,7 @@ int main(void)
 
 	puts("keyboard test:\n");
 	c = 'a';
+	unsigned long long off = 0;
 	for(;;) {
 		unsigned int key;
 
@@ -87,6 +89,10 @@ int main(void)
 		if(read_keyboard(&key) >= 0)
 			if((key & KEY_MOD_UP) == 0)
 				putchar(key);
+
+		/* do some block io */
+//		block_read(off, 1024*1024, 0x200000);
+//		off += 1024*1024;
 
 //		puts("abc ");
 //		draw_char('a', 0, 0);

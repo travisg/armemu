@@ -16,6 +16,7 @@ OBJS := \
 	display.o \
 	text.o \
 	utils.o \
+	block.o \
 \
 	arm.o \
 	thumb.To \
