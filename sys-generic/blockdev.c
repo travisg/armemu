@@ -64,7 +64,7 @@ static uint bdev_read(armaddr_t address, off_t offset, size_t length)
 	SYS_TRACE(1, "sys: bdev_read at 0x%08x, offset 0x%16llx, size %zd\n", 
 		address, offset, length);
 
-	byte buf[512];
+	byte buf[4096];
 
 	lseek(bdev->fd, offset, SEEK_SET);
 	while (length > 0) {
@@ -94,7 +94,7 @@ static uint bdev_write(armaddr_t address, off_t offset, size_t length)
 	SYS_TRACE(5, "sys: bdev_write at 0x%08x, offset 0x%16llx, size %zd\n", 
 		address, offset, length);
 
-	byte buf[512];
+	byte buf[4096];
 
 	lseek(bdev->fd, offset, SEEK_SET);
 	while (length > 0) {
@@ -231,7 +231,12 @@ int initialize_blockdev(void)
 	if (strlen(str) == 0)
 		return -1;
 
-	bdev->fd = open(str, O_RDWR);
+	unsigned int flags = O_RDWR;
+
+	if (get_config_key_bool("block", "sync", 0))
+		flags |= O_SYNC;
+
+	bdev->fd = open(str, flags);
 	if (bdev->fd < 0) {
 		SYS_TRACE(0, "sys: unable to open block device file '%s'\n", str);
 		return -1;
