@@ -23,7 +23,8 @@ OBJS := \
 
 $(TARGET): $(TARGETELF)
 	arm-elf-objcopy -O binary $(TARGETELF) $(TARGET)
-	arm-elf-objdump -S $(TARGETELF) > $(TARGETELF).lst
+	arm-elf-objdump -d $(TARGETELF) > $(TARGETELF).lst
+	arm-elf-objdump -S $(TARGETELF) > $(TARGETELF).debug.lst
 
 $(TARGETELF): $(OBJS)
 	arm-elf-ld -g -Ttext=0 $(OBJS) $(LIBGCC) -o $@
