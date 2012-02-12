@@ -1,6 +1,9 @@
 build-*
 *.swp
 *~
+*.o
+*.To
+*.bin
 tags
 TAGS
 local.mk
