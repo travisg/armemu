@@ -27,7 +27,7 @@ $(TARGET): $(TARGETELF)
 	arm-elf-objdump -S $(TARGETELF) > $(TARGETELF).debug.lst
 
 $(TARGETELF): $(OBJS)
-	arm-elf-ld -g -Ttext=0 $(OBJS) $(LIBGCC) -o $@
+	arm-elf-ld -g -T system-onesegment.ld $(OBJS) $(LIBGCC) -o $@
 
 clean:
 	rm -f $(TARGET) $(TARGETELF) $(TARGETELF).lst
