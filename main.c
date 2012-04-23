@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <fcntl.h>
 #include <sys/sys.h>
 
 #include <SDL/SDL.h>
@@ -73,6 +74,8 @@ static void setconsole(void)
 	t.c_cc[VMIN]  = 0; // nonblocking read
 	t.c_cc[VTIME] = 0; // nonblocking read
 	tcsetattr(0, TCSANOW, &t);
+
+	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	t = oldstdout;
 	t.c_lflag = ISIG; // no output processing
