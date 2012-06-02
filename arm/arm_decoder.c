@@ -104,7 +104,7 @@ static void prim_group_0_decode(struct uop *op)
 		case (1<<23)|(1<<20)|(1<<7)|(1<<4):
 		case (2<<23)|(1<<20)|(1<<7)|(1<<4):
 		case (3<<23)|(1<<20)|(1<<7)|(1<<4):	{ // multiplies, extra load/stores (Figure 3-2, page A3-3)
-			switch(op->undecoded.raw_instruction & (3<<5)) {
+			switch(op->undecoded.raw_instruction & (3<<5)) { // bits 5 and 6
 				case 0: // multiply, multiply long, swap
 					switch(op->undecoded.raw_instruction & (3<<23)) {
 						case 0:
@@ -120,15 +120,8 @@ static void prim_group_0_decode(struct uop *op)
 							op_undefined(op);
 					}
 					break;
-				case (1<<5): // load/store halfword
-					op_load_store_halfword(op);
-					break;
-				default:	 // load/store halfward and load/store two words
-					if(op->undecoded.raw_instruction & (1<<20)) {
-						op_load_store_halfword(op); // load store halfword
-					} else {
-						op_load_store_two_word(op); // load store two words
-					}
+				default: // load/store halfward and load/store two words
+					op_misc_load_store(op); // load store halfword/doubleword
 					break;
 			}
 			break;

@@ -878,7 +878,7 @@ void op_load_store(struct uop *op)
 #undef P
 }
 
-void op_load_store_halfword(struct uop *op)
+void op_misc_load_store(struct uop *op)
 {
 	word ins = op->undecoded.raw_instruction;
 	int Rn, Rd;
@@ -886,13 +886,33 @@ void op_load_store_halfword(struct uop *op)
 	// start decoding the fields in the instruction
 	Rd = BITS_SHIFT(ins, 15, 12);
 	Rn = BITS_SHIFT(ins, 19, 16);
+	word D = 0; // doubleword
 #define H BIT(ins, 5)
-#define S BIT(ins, 6)
-#define L BIT(ins, 20)
+	word S = BIT(ins, 6);
+	word L = BIT(ins, 20);
 #define W BIT(ins, 21)
 #define I BIT(ins, 22)
 #define U BIT(ins, 23)
 #define P BIT(ins, 24)
+
+	// look for the special doubleword case
+	if (!L && S) {
+		// in armv4 this would have been signed halfword/byte store, which doesn't make any sense
+		// ldrd/strd uses this previously unused decoding
+		D = 1;
+		L = !H;
+		S = 0;
+
+		// check for undefined case. Rd cannot be odd
+		if (Rd & 1) {
+			op_undefined(op);
+		}
+	}
+
+	if(D && get_isa() < ARM_V5e) {
+		op_undefined(op);
+		return;
+	}
 
 	// immediate or register offset
 	if(I) {
@@ -901,7 +921,7 @@ void op_load_store_halfword(struct uop *op)
 		offset |= BITS(ins, 11, 8) >> 4;
 
 		// look for a particular case that decodes to a very simple uop
-		if(L && Rn == PC) {
+		if(L && Rn == PC && !D) {
 			// LOAD_IMMEDIATE
 			if(H)
 				op->opcode = LOAD_IMMEDIATE_HALFWORD;
@@ -915,9 +935,8 @@ void op_load_store_halfword(struct uop *op)
 
 			op->load_immediate.address = get_reg(PC) + offset;
 
-
-			CPU_TRACE(5, "\t\tload_store_halfword: IMMEDIATE L %d, W %d, H %d, Rd %d addr 0x%x\n",
-				L?1:0, W?1:0, H?1:0, Rd, op->load_immediate.address);
+			CPU_TRACE(5, "\t\tmisc_load_store: IMMEDIATE L %d, W %d, D %d, H %d, Rd %d addr 0x%x\n",
+				L?1:0, W?1:0, D?1:0, H?1:0, Rd, op->load_immediate.address);
 		} else {		
 			// LOAD_IMMEDIATE_OFFSET, STORE_IMMEDIATE_OFFSET
 			if(L)
@@ -929,7 +948,9 @@ void op_load_store_halfword(struct uop *op)
 				op->flags |= UOPLSFLAGS_POSTINDEX;			
 			if(W || !P)
 				op->flags |= UOPLSFLAGS_WRITEBACK;
-			if(H)
+			if(D)
+				op->flags |= UOPLSFLAGS_SIZE_DWORD;
+			else if(H)
 				op->flags |= UOPLSFLAGS_SIZE_HALFWORD;
 			else
 				op->flags |= UOPLSFLAGS_SIZE_BYTE;
@@ -942,8 +963,8 @@ void op_load_store_halfword(struct uop *op)
 				offset = -offset;
 			op->load_store_immediate_offset.offset = offset;
 
-			CPU_TRACE(5, "\t\tload_store_halfword: IMMEDIATE_OFFSET L %d, W %d, P %d, H %d, S %d, Rd %d Rn %d offset 0x%x\n",
-				L?1:0, W?1:0, P?1:0, H?1:0, S?1:0, Rd, Rn, op->load_store_immediate_offset.offset);
+			CPU_TRACE(5, "\t\tmisc_load_store: IMMEDIATE_OFFSET L %d, W %d, P %d, D %d, H %d, S %d, Rd %d Rn %d offset 0x%x\n",
+				L?1:0, W?1:0, P?1:0, D?1:0, H?1:0, S?1:0, Rd, Rn, op->load_store_immediate_offset.offset);
 		}
 	} else {
 		// register offset
@@ -961,7 +982,9 @@ void op_load_store_halfword(struct uop *op)
 			op->flags |= UOPLSFLAGS_WRITEBACK;
 		if(!U)
 			op->flags |= UOPLSFLAGS_NEGATE_OFFSET;
-		if(H)
+		if(D)
+			op->flags |= UOPLSFLAGS_SIZE_DWORD;
+		else if(H)
 			op->flags |= UOPLSFLAGS_SIZE_HALFWORD;
 		else
 			op->flags |= UOPLSFLAGS_SIZE_BYTE;
@@ -973,133 +996,11 @@ void op_load_store_halfword(struct uop *op)
 		op->load_store_scaled_reg_offset.source_reg = Rn;
 		op->load_store_scaled_reg_offset.source2_reg = Rm;
 
-		CPU_TRACE(5, "\t\tload_store_halfword: REG_OFFSET L %d, W %d, P %d, H %d, S %d, Rd %d Rn %d Rm %d\n",
-			L?1:0, W?1:0, P?1:0, H?1:0, S?1:0, Rd, Rn, Rm);
+		CPU_TRACE(5, "\t\tmisc_load_store: REG_OFFSET L %d, W %d, P %d, D %d, H %d, S %d, Rd %d Rn %d Rm %d\n",
+			L?1:0, W?1:0, P?1:0, D?1:0, H?1:0, S?1:0, Rd, Rn, Rm);
 	}
 #undef H
-#undef S
-#undef L
 #undef W
-#undef I
-#undef U
-#undef P
-}
-
-void op_load_store_two_word(struct uop *op)
-{
-	word ins = op->undecoded.raw_instruction;
-	panic_cpu("op_load_store_two_word unimplemented decode!\n");
-
-	// ARMv5e instruction only
-
-	int Rn, Rd;
-	int Rnval;
-	armaddr_t addr;
-	armaddr_t writeback_addr;
-	armaddr_t offset;
-	int W;
-
-	// start decoding the fields in the instruction
-	Rd = BITS_SHIFT(ins, 15, 12);
-	Rn = BITS_SHIFT(ins, 19, 16);
-	Rnval = get_reg(Rn);
-	W = BIT(ins, 21);
-#define S BIT(ins, 5) // store
-#define I BIT(ins, 22)
-#define U BIT(ins, 23)
-#define P BIT(ins, 24)
-
-	// immediate or register offset
-	if(I) {
-		// immediate offset
-		offset = BITS(ins, 3, 0);
-		offset |= BITS(ins, 11, 8) >> 4;
-	} else {
-		// register offset
-		int Rm = BITS(ins, 3, 0);
-
-		offset = get_reg(Rm);
-	}
-
-	addr = Rnval;
-	if(!U)
-		offset = -offset;
-
-	if(P) {
-		// pre-indexed or offset addressing
-		addr += offset;
-		writeback_addr = addr;
-	} else {
-		// post-index addressing
-		writeback_addr = addr + offset;
-		W = 1; // always writeback in this case
-	}
-
-	CPU_TRACE(5, "\t\top_load_store_two_word: S %d, I %d, W %d, U %d, P %d, S %d, Rn %d, Rd %d, Rnval %d, addr 0x%x\n",
-		S?1:0, I?1:0, W?1:0, U?1:0, P?1:0, S?1:0, Rn, Rd, Rnval, addr);
-
-	// do the load/store
-	if(!S) {
-		// load
-		word temp;
-		if(mmu_read_mem_word(addr, &temp))
-			return; // data abort
-		put_reg(Rd, temp);
-		if(mmu_read_mem_word(addr + 4, &temp)) {
-			put_reg(Rn, Rnval); // we may have overwritten Rd in the previous load, restore it
-			return; // data abort
-		}
-		put_reg(Rd + 1, temp);
-
-#if 0 // XXX cycle count
-		// cycle count
-		if(get_core() == ARM7) {
-			if(Rd != 15)
-				add_to_perf_counter(CYCLE_COUNT, 2);
-			else
-				add_to_perf_counter(CYCLE_COUNT, 4); // PC takes an additional couple of cycles
-		} else /* if(get_core() >= ARM9) */ {
-			add_to_perf_counter(CYCLE_COUNT, 1); // byte and halfword loads are one cycle slower
-			if(Rd == 15)
-				add_to_perf_counter(CYCLE_COUNT, 4);
-			if(get_core() == ARM9e && !I) // XXX register offset, is this true?
-				add_to_perf_counter(CYCLE_COUNT, 1);
-			// XXX schedule interlock
-		}
-#endif
-	} else {
-		// store
-		word temp = get_reg(Rd);
-		if(mmu_write_mem_word(addr, temp))
-			return; // data abort
-		temp = get_reg(Rd + 1);
-		if(mmu_write_mem_word(addr + 4, temp))
-			return; // data abort
-
-#if 0 // XXX cycle count
-		// cycle count (arm9 is 1 cycle)
-		if(get_core() == ARM7) {
-			add_to_perf_counter(CYCLE_COUNT, 1);
-		} else if(get_core() == ARM9e) {
-			if(!I) // XXX register offset, is this true?
-				add_to_perf_counter(CYCLE_COUNT, 1);
-		}
-#endif
-	}
-
-	// writeback
-	if(W) {
-		put_reg(Rn, writeback_addr);
-	}
-
-#if COUNT_ARM_OPS
-	if(S)	
-		inc_perf_counter(OP_STORE);
-	else
-		inc_perf_counter(OP_LOAD);
-#endif
-
-#undef S
 #undef I
 #undef U
 #undef P

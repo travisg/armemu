@@ -807,6 +807,25 @@ static inline __ALWAYS_INLINE void uop_load_immediate_offset(struct uop *op)
 				temp_word = SIGN_EXTEND(temp_word, 7);
 			break;
 		}
+		case UOPLSFLAGS_SIZE_DWORD: {
+			ASSERT((op->load_store_scaled_reg_offset.target_reg & 1) == 0);
+
+			// handle the first word
+			if(mmu_read_mem_word(temp_addr, &temp_word))
+				return;
+
+			put_reg(op->load_store_scaled_reg_offset.target_reg, temp_word);
+
+			// read the second word
+			word temp_word2;
+
+			if(mmu_read_mem_word(temp_addr + 4, &temp_word2))
+				return;
+
+			// NOTE: if second register is r15, unpredictable
+			put_reg(op->load_store_scaled_reg_offset.target_reg + 1, temp_word2);
+			break;
+		}
 	}
 
 	// store the result
@@ -826,7 +845,7 @@ static inline __ALWAYS_INLINE void uop_load_immediate_offset(struct uop *op)
 	else if(get_core() == ARM7)
 		add_to_perf_counter(CYCLE_COUNT, 2); // on arm7 all other loads are 3
 	else if(get_core() >= ARM9 && (op->flags & UOPLSFLAGS_SIZE_MASK) != UOPLSFLAGS_SIZE_WORD)
-		add_to_perf_counter(CYCLE_COUNT, 1); // byte and halfword loads are one cycle slower
+		add_to_perf_counter(CYCLE_COUNT, 1); // byte, halfword, and dword loads are one cycle slower
 #endif
 }
 
@@ -905,6 +924,25 @@ static inline __ALWAYS_INLINE void uop_load_scaled_reg_offset(struct uop *op)
 				temp_word = SIGN_EXTEND(temp_word, 7);
 			break;
 		}
+		case UOPLSFLAGS_SIZE_DWORD: {
+			ASSERT((op->load_store_scaled_reg_offset.target_reg & 1) == 0);
+
+			// handle the first word
+			if(mmu_read_mem_word(temp_addr, &temp_word))
+				return;
+
+			put_reg(op->load_store_scaled_reg_offset.target_reg, temp_word);
+
+			// read the second word
+			word temp_word2;
+
+			if(mmu_read_mem_word(temp_addr + 4, &temp_word2))
+				return;
+
+			// NOTE: if second register is r15, unpredictable
+			put_reg(op->load_store_scaled_reg_offset.target_reg + 1, temp_word2);
+			break;
+		}
 	}
 
 	// store the result
@@ -925,7 +963,7 @@ static inline __ALWAYS_INLINE void uop_load_scaled_reg_offset(struct uop *op)
 	else if(get_core() == ARM7)
 		add_to_perf_counter(CYCLE_COUNT, 2); // on arm7 all other loads are 3
 	else if(get_core() >= ARM9 && (op->flags & UOPLSFLAGS_SIZE_MASK) != UOPLSFLAGS_SIZE_WORD)
-		add_to_perf_counter(CYCLE_COUNT, 1); // byte and halfword loads are one cycle slower
+		add_to_perf_counter(CYCLE_COUNT, 1); // byte, halfword, and dword loads are one cycle slower
 	if(get_core() == ARM9e)
 		add_to_perf_counter(CYCLE_COUNT, 1); // scaled register loads are 1 cycle slower on this core
 #endif
@@ -962,6 +1000,19 @@ static inline __ALWAYS_INLINE void uop_store_immediate_offset(struct uop *op)
 			if(mmu_write_mem_byte(temp_addr, temp_word))
 				return;
 			break;
+		case UOPLSFLAGS_SIZE_DWORD:
+			ASSERT((op->load_store_scaled_reg_offset.target_reg & 1) == 0);
+
+			// handle the first word
+			if(mmu_write_mem_word(temp_addr, temp_word))
+				return;
+
+			// read the second word
+			temp_word = get_reg(op->load_store_scaled_reg_offset.target_reg + 1);
+
+			if(mmu_write_mem_word(temp_addr + 4, temp_word))
+				return;
+			break;
 	}
 
 	// do writeback
@@ -974,6 +1025,10 @@ static inline __ALWAYS_INLINE void uop_store_immediate_offset(struct uop *op)
 #if COUNT_CYCLES
 	// cycle count (arm9 is 1 cycle, arm7 is 2)
 	if(get_core() == ARM7) {
+		add_to_perf_counter(CYCLE_COUNT, 1);
+	}
+	// strd is one cycle slower
+	if ((op->flags & UOPLSFLAGS_SIZE_MASK) == UOPLSFLAGS_SIZE_DWORD) {
 		add_to_perf_counter(CYCLE_COUNT, 1);
 	}
 #endif
@@ -1047,6 +1102,19 @@ static inline __ALWAYS_INLINE void uop_store_scaled_reg_offset(struct uop *op)
 			if(mmu_write_mem_byte(temp_addr, temp_word))
 				return;
 			break;
+		case UOPLSFLAGS_SIZE_DWORD:
+			ASSERT((op->load_store_scaled_reg_offset.target_reg & 1) == 0);
+
+			// handle the first word
+			if(mmu_write_mem_word(temp_addr, temp_word))
+				return;
+
+			// read the second word
+			temp_word = get_reg(op->load_store_scaled_reg_offset.target_reg + 1);
+
+			if(mmu_write_mem_word(temp_addr + 4, temp_word))
+				return;
+			break;
 	}
 
 	// do writeback
@@ -1061,6 +1129,10 @@ static inline __ALWAYS_INLINE void uop_store_scaled_reg_offset(struct uop *op)
 	if(get_core() == ARM7) {
 		add_to_perf_counter(CYCLE_COUNT, 1);
 	} else if(get_core() == ARM9e) {
+		add_to_perf_counter(CYCLE_COUNT, 1); // XXX not precisely correct, since a zero scale is no extra work
+	}
+	// strd is one cycle slower
+	if ((op->flags & UOPLSFLAGS_SIZE_MASK) == UOPLSFLAGS_SIZE_DWORD) {
 		add_to_perf_counter(CYCLE_COUNT, 1);
 	}
 #endif
