@@ -208,9 +208,9 @@ static int open_tun(const char *dev)
 
 int initialize_network(void)
 {
+#if WITH_TUNTAP
 	const char *str;
 
-#if WITH_TUNTAP
 	network = calloc(sizeof(*network), 1);
 
 	// install the network register handlers
