@@ -7,7 +7,7 @@ BUILDDIR := build-$(SYSTARGET)
 OBJDUMP := objdump
 
 # generic cflags
-CFLAGS := -O3 -g -Iinclude -Wall -W -Wno-unused-parameter -Wmissing-prototypes -Wno-multichar -finline $(PROFILE)
+CFLAGS := -O3 -g -Iinclude -Wall -W -Wno-unused-parameter -Wno-unused-label -Wno-unused-function -Wmissing-prototypes -Wno-multichar -finline $(PROFILE)
 LDFLAGS := -g $(PROFILE)
 LDLIBS := -lSDL
 
