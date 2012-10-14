@@ -261,29 +261,11 @@ enum {
 #define SIGN_EXTEND(val, topbit) (ASR_SIMPLE(LSL(val, 32-(topbit)), 32-(topbit)))
 
 /* ARM routines */
-reg_t get_reg(int num);
-void put_reg(int num, reg_t data);
-void put_reg_nopc(int num, reg_t data);
 reg_t get_reg_user(int num);            /* "user" mode reg access */
 void put_reg_user(int num, reg_t data); /* same */
 void set_cpu_mode(int mode);
-word do_add(word a, word b, int carry_in, int *carry, int *ovl);
-unsigned int get_condition(unsigned int condition);
-void set_condition(unsigned int condition, bool set);
-void set_NZ_condition(reg_t val);
-bool check_condition(byte condition);
-bool arm_in_priviledged(void);
-enum arm_instruction_set get_isa(void);
-enum arm_core get_core(void);
-void add_to_perf_counter(enum perf_counter_type counter, int add);
-void inc_perf_counter(enum perf_counter_type counter);
-#if COUNT_CYCLES
-int get_cycle_count(void);
-#endif
-int get_instruction_count(void);
 
-/* inline overrides of a lot of the above routines */
-extern inline word do_add(word a, word b, int carry_in, int *carry, int *ovl)
+static inline word do_add(word a, word b, int carry_in, int *carry, int *ovl)
 {
 	word val;
 
@@ -316,7 +298,7 @@ if (!IS_64HOST) {
 	return val;
 }
 
-extern inline void set_condition(unsigned int condition, bool set)
+static inline void set_condition(unsigned int condition, bool set)
 {
 	if(condition == PSR_THUMB) {
 		CPU_TRACE(7, "setting THUMB bit to %d\n", set);
@@ -328,24 +310,24 @@ extern inline void set_condition(unsigned int condition, bool set)
 		cpu.cpsr &= ~condition;
 }
 
-extern inline void set_NZ_condition(reg_t val)
+static inline void set_NZ_condition(reg_t val)
 {
 	set_condition(PSR_CC_NEG, BIT(val, 31));
 	set_condition(PSR_CC_ZERO, val == 0);
 }
 
-extern inline unsigned int get_condition(unsigned int condition)
+static inline unsigned int get_condition(unsigned int condition)
 {
 	return (cpu.cpsr & condition);
 }
 
-extern inline reg_t get_reg(int num)
+static inline reg_t get_reg(int num)
 {
 	ASSERT(num >= 0 && num < 16);
 	return cpu.r[num];
 }
 
-extern inline void put_reg(int num, reg_t data)
+static inline void put_reg(int num, reg_t data)
 {
 	ASSERT(num >= 0 && num < 16);
 	cpu.r[num] = data;
@@ -355,13 +337,13 @@ extern inline void put_reg(int num, reg_t data)
 	}
 }
 
-extern inline void put_reg_nopc(int num, reg_t data)
+static inline void put_reg_nopc(int num, reg_t data)
 {
 	ASSERT(num >= 0 && num < 15);
 	cpu.r[num] = data;
 }
 
-extern inline bool check_condition(byte condition)
+static inline bool check_condition(byte condition)
 {
 	// this happens far more often than not
 	if(likely(condition == COND_AL))
@@ -370,40 +352,40 @@ extern inline bool check_condition(byte condition)
 	return cpu.condition_table[cpu.cpsr >> COND_SHIFT] & (1 << (condition));
 }
 
-extern inline bool arm_in_priviledged(void)
+static inline bool arm_in_priviledged(void)
 {
 	return ((cpu.cpsr & PSR_MODE_MASK) != PSR_MODE_user);
 }
 
-extern inline enum arm_instruction_set get_isa(void)
+static inline enum arm_instruction_set get_isa(void)
 {
 	return cpu.isa;
 }
 
-extern inline enum arm_core get_core(void)
+static inline enum arm_core get_core(void)
 {
 	return cpu.core;
 }
 
-extern inline void add_to_perf_counter(enum perf_counter_type counter, int add)
+static inline void add_to_perf_counter(enum perf_counter_type counter, int add)
 {
 	if(counter < MAX_PERF_COUNTER)
 		cpu.perf_counters.count[counter] += add;
 }
 
-extern inline void inc_perf_counter(enum perf_counter_type counter)
+static inline void inc_perf_counter(enum perf_counter_type counter)
 {
 	add_to_perf_counter(counter, 1);
 }
 
 #if COUNT_CYCLES
-extern inline int get_cycle_count(void)
+static inline int get_cycle_count(void)
 {
 	return cpu.perf_counters.count[CYCLE_COUNT];
 }
 #endif
 
-extern inline int get_instruction_count(void)
+static inline int get_instruction_count(void)
 {
 	return cpu.perf_counters.count[INS_COUNT];
 }
