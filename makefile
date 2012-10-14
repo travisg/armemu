@@ -25,9 +25,12 @@ endif
 
 # Darwin (Mac OS X) too
 ifeq ($(UNAME),Darwin)
-CFLAGS += -DASM_LEADING_UNDERSCORES=1 -mdynamic-no-pic -fast -I/opt/local/include
+CFLAGS += -DASM_LEADING_UNDERSCORES=1 -mdynamic-no-pic -I/opt/local/include
+# generates somewhat faster code at O2
+CFLAGS += -O2
 LDLIBS += -framework Cocoa -L/opt/local/lib -lSDLmain -lstdc++
-#CC := clang
+CC := clang
+#CC := gcc
 endif
 
 ifeq ($(UNAME),Linux)
