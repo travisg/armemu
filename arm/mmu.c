@@ -247,7 +247,7 @@ static enum mmu_domain_check_results mmu_domain_check(int domain)
 			return CLIENT;
 		case 0: // no access
 		case 2: // reserved
-			return NO_ACCESS;
+			return DOMAIN_FAULT;
 	}
 }
 
