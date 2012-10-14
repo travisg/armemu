@@ -7,7 +7,7 @@ BUILDDIR := build-$(SYSTARGET)
 OBJDUMP := objdump
 
 # generic cflags
-CFLAGS := -O3 -g -Iinclude -Wall -W -Wno-unused-parameter -Wno-unused-label -Wno-unused-function -Wmissing-prototypes -Wno-multichar -finline $(PROFILE)
+CFLAGS := -O2 -g -Iinclude -Wall -W -Wno-unused-parameter -Wno-unused-label -Wno-unused-function -Wmissing-prototypes -Wno-multichar -finline $(PROFILE)
 LDFLAGS := -g $(PROFILE)
 LDLIBS := -lSDL
 
@@ -26,8 +26,6 @@ endif
 # Darwin (Mac OS X) too
 ifeq ($(UNAME),Darwin)
 CFLAGS += -DASM_LEADING_UNDERSCORES=1 -mdynamic-no-pic -I/opt/local/include
-# generates somewhat faster code at O2
-CFLAGS += -O2
 LDLIBS += -framework Cocoa -L/opt/local/lib -lSDLmain -lstdc++
 CC := clang
 #CC := gcc
