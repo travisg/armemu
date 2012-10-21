@@ -98,6 +98,8 @@ enum uop_opcode {
 	MULTIPLY,
 	MULTIPLY_LONG,
 
+	SWAP,
+
 	// count leading zeros
 	COUNT_LEADING_ZEROS,
 
@@ -250,6 +252,13 @@ struct uop {
 			byte source_reg;
 			byte source2_reg;
 		} mull;
+
+		struct {
+			byte dest_reg;
+			byte source_reg;
+			byte mem_reg;
+			byte b;
+		} swp;
 
 		// count leading zeros
 		struct {

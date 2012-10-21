@@ -2571,6 +2571,56 @@ static inline __ALWAYS_INLINE void uop_multiply_long(struct uop *op)
 #endif
 }
 
+static inline __ALWAYS_INLINE void uop_swap(struct uop *op)
+{
+	word mem_reg_val, source_reg_val;
+	armaddr_t addr;
+
+	ASSERT_VALID_REG(op->swp.dest_reg);
+	ASSERT_VALID_REG(op->swp.source_reg);
+	ASSERT_VALID_REG(op->swp.mem_reg);
+
+	source_reg_val = get_reg(op->swp.source_reg);
+	mem_reg_val = get_reg(op->swp.mem_reg);
+
+	addr = mem_reg_val & 0xfffffffc;
+
+	if(!op->swp.b) {
+		word temp;
+		if(mmu_read_mem_word(addr, &temp))
+			return; // data abort
+
+		// simulate the weird unaligned access behavior
+		switch(mem_reg_val & 0x3) {
+			default:
+			case 0:
+				break;
+			case 1:
+				temp = ROR(temp, 8);
+				break;
+			case 2:
+				temp = ROR(temp, 16);
+				break;
+			case 3:
+				temp = ROR(temp, 24);
+				break;
+		}
+
+		// do the swap
+		if(mmu_write_mem_word(addr, source_reg_val))
+			return; // data abort
+		put_reg(op->swp.dest_reg, temp);
+	} else {
+		// byte version
+		byte temp;
+		if(mmu_read_mem_byte(addr, &temp))
+			return; // data abort
+		if(mmu_write_mem_byte(addr, source_reg_val))
+			return; // data abort
+		put_reg(op->swp.dest_reg, temp);
+	}
+}
+
 static inline __ALWAYS_INLINE void uop_count_leading_zeros(struct uop *op)
 {
 	word val;
@@ -3075,6 +3125,9 @@ int uop_dispatch_loop(void)
 				break;
 			case MULTIPLY_LONG:
 				uop_multiply_long(op);
+				break;
+			case SWAP:
+				uop_swap(op);
 				break;
 		    case COUNT_LEADING_ZEROS:
 				uop_count_leading_zeros(op);

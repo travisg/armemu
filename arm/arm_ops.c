@@ -706,57 +706,22 @@ void op_mull(struct uop *op)
 void op_swap(struct uop *op)
 {
 	word ins = op->undecoded.raw_instruction;
-	panic_cpu("op_swap unimplemented decode!\n");
 	int Rn, Rd, Rm;
-	reg_t Rnval, Rmval;
-	armaddr_t addr;
 
 	// decode the fields in the instruction
 	Rm = BITS(ins, 3, 0);
-	Rd = BITS(ins, 15, 12);
-	Rn = BITS(ins, 19, 16);
-#define	B BIT(ins, 22)
-	Rnval = get_reg(Rn);
-	Rmval = get_reg(Rm);
-	addr = Rnval & 0xfffffffc;
+	Rd = BITS_SHIFT(ins, 15, 12);
+	Rn = BITS_SHIFT(ins, 19, 16);
+#define	B BIT_SHIFT(ins, 22)
 
-	CPU_TRACE(5, "\t\tswp: B %d, Rn %d, Rd %d, Rm %d, Rnval %d, Rmval %d, addr 0x%08x\n", B?1:0, Rn, Rd, Rm, Rnval, Rmval, addr);	
+	CPU_TRACE(5, "\t\tswp: B %d, Rn %d, Rd %d, Rm %\n", B?1:0, Rn, Rd, Rm);	
 
-	if(!B) {
-		// read mem
-		word temp;
-		if(mmu_read_mem_word(addr, &temp))
-			return; // data abort
-
-		// simulate the weird unaligned access behavior
-		switch(Rnval & 0x3) {
-			default:
-			case 0:
-				break;
-			case 1:
-				temp = ROR(temp, 8);
-				break;
-			case 2:
-				temp = ROR(temp, 16);
-				break;
-			case 3:
-				temp = ROR(temp, 24);
-				break;
-		}
-	
-		// do the swap
-		if(mmu_write_mem_word(addr, Rmval))
-			return; // data abort
-		put_reg(Rd, temp);
-	} else {
-		// byte version
-		byte temp;
-		if(mmu_read_mem_byte(addr, &temp))
-			return; // data abort
-		if(mmu_write_mem_byte(addr, Rmval))
-			return; // data abort
-		put_reg(Rd, temp);
-	}
+	op->opcode = SWAP;
+	op->cond = (ins >> COND_SHIFT) & COND_MASK;
+	op->swp.dest_reg = Rd;
+	op->swp.source_reg = Rm;
+	op->swp.mem_reg = Rn;
+	op->swp.b = B;
 
 #if COUNT_CYCLES
 	// XXX cycle count
