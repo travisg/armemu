@@ -7,7 +7,7 @@ OBJDUMP := arm-eabi-objdump
 OBJCOPY := arm-eabi-objcopy
 
 #VFP := -Wa,-mfpu=vfp
-CFLAGS := -mthumb-interwork -O2 -g -mcpu=arm926ej-s -fno-builtin -msoft-float $(VFP)
+CFLAGS := -mthumb-interwork -O2 -g -mcpu=cortex-a8 -fno-builtin -msoft-float $(VFP)
 
 LIBGCC := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 

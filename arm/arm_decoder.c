@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 Travis Geiselbrecht
+ * Copyright (c) 2005-2012 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -143,7 +143,12 @@ static void prim_group_1_decode(struct uop *op)
             break;
         case 0x10:
         case 0x14: // undefined
-            op_undefined(op);
+            if (get_isa() < ARM_V6) {
+                op_undefined(op);
+                break;
+            }
+            // movw/movt
+            op_data_processing(op);
             break;
     }
 }
@@ -152,12 +157,28 @@ static void prim_group_1_decode(struct uop *op)
 static void prim_group_3_decode(struct uop *op)
 {
     /* look for a particular undefined form */
-    if (op->undecoded.raw_instruction & (1<<4)) {
-        op_undefined(op);
-        return;
-    }
+    if (BIT(op->undecoded.raw_instruction, 4)) {
+        if (get_isa() < ARM_V6) {
+            op_undefined(op);
+            return;
+        }
 
-    op_load_store(op); // general load/store
+        // media instructions
+        // table A5-16 on pg A5-209
+        word op1 = BITS_SHIFT(op->undecoded.raw_instruction, 24, 20);
+        word op2 = BITS_SHIFT(op->undecoded.raw_instruction, 7, 5);
+
+        if ((op1 & 0x1a) == 0x1a && ((op2 & 0x3) == 0x2)) {
+            op_bfx(op); // sbfx/ubfx
+        } else if ((op1 & 0x1f) == 0x1f && ((op2 & 0x7) == 0x7)) {
+            op_undefined(op); // permanently undefined
+        } else {
+            // unhandled stuff
+            bad_decode(op);
+        }
+    } else {
+        op_load_store(op); // general load/store
+    }
 }
 
 // opcode[27:25] == 0b110
@@ -200,7 +221,7 @@ const decode_stage_func ins_group_table[] = {
     prim_group_0_decode, // data processing, multiply, load/store halfword/two words
     prim_group_1_decode, // data processing immediate and move immediate to status reg
     op_load_store,       // load/store immediate offset
-    prim_group_3_decode, // load/store register offset
+    prim_group_3_decode, // load/store register offset and v6+ media instructions
     op_load_store_multiple, // load/store multiple
     op_branch,  // branch op
     prim_group_6_decode, // coprocessor load/store and double reg transfers
@@ -209,22 +230,86 @@ const decode_stage_func ins_group_table[] = {
 
 void arm_decode_into_uop(struct uop *op)
 {
-    /* look for the unconditional instruction extension space. page A3-34 */
-    // XXX are these "always" instructions on V4?
-    if (((op->undecoded.raw_instruction >> COND_SHIFT) & COND_MASK) == COND_SPECIAL) {
-        unsigned int opcode1 = BITS_SHIFT(op->undecoded.raw_instruction, 27, 20);
-        if ((opcode1 & 0xe0) == 0xa0) {
+    word ins = op->undecoded.raw_instruction;
+    /* look for the unconditional instruction extension space */
+    /* all of these are unpredictable in V4 */
+    if (BITS_SHIFT(ins, 31, 27) == 0x1e) {
+        /* figure A5-217, ARM DDI 0406C.b */
+        uint32_t op1 = BITS_SHIFT(ins, 26, 20);
+        uint32_t Rn = BITS_SHIFT(ins, 19, 16);
+        uint32_t op2 = BITS_SHIFT(ins, 7, 4);
+
+        if (op1 == 0x10) {
+            if (((op2 & 0x2) == 0) && ((Rn & 0x1) == 0)) {
+                op_cps(op);
+            } else if (op2 == 0 && ((Rn & 0x1) == 1)) {
+                // XXX setend
+                bad_decode(op);
+            } else {
+                op_undefined(op);
+            }
+        } else if ((op1 & 0x60) == 0x20) {
+            // XXX Advanced SIMD processing
+            bad_decode(op);
+        } else if ((op1 & 0x71) == 0x40) {
+            // XXX Advanced SIMD element or structure load/store instructions
+            bad_decode(op);
+        } else if ((op1 & 0x77) == 0x45) {
+            op_pld(op); // v7 immediate pld
+        } else if ((op1 & 0x77) == 0x55) {
+            op_pld(op); // v5 pld
+        } else if ((op1 & 0x77) == 0x51) {
+            op_pld(op); // mp ext pld
+        } else if (op1 == 0x57) {
+            switch (op2) {
+                case 0x1: // CLREX
+                    bad_decode(op);
+                    break;
+                case 0x4: // DSB
+                    op_nop(op);
+                    break;
+                case 0x5: // DMB
+                    op_nop(op);
+                    break;
+                case 0x6: // ISB
+                    op_nop(op);
+                    break;
+                default:
+                    op_undefined(op);
+                    break;
+            }
+        } else if ((op1 & 0x77) == 0x61 && ((op2 & 1) == 0)) {
+            op_pld(op); // pli
+        } else if ((op1 & 0x77) == 0x71 && ((op2 & 1) == 0)) {
+            op_pld(op); // preload with intent to write
+        } else if ((op1 & 0x77) == 0x75 && ((op2 & 1) == 0)) {
+            op_pld(op); // v5 pld
+        } else if (op1 == 0x7f && (op2 == 0xf)) {
+            op_undefined(op); // permanently undefined
+        } else {
+            op_undefined(op);
+        }
+    } else if (BITS_SHIFT(op->undecoded.raw_instruction, 31, 28) == 0xf) {
+        /* figure A5-216, ARM DDI 0406C.b */
+        uint32_t op1 = BITS_SHIFT(ins, 27, 20);
+        //uint32_t op2 = BIT_SHIFT(ins, 4);
+
+        if ((op1 & 0xe5) == 0x84) {
+            // SRS
+            bad_decode(op);
+        } else if ((op1 & 0xe5) == 0x81) {
+            // RFE
+            bad_decode(op);
+        } else if ((op1 & 0xe0) == 0xa0) {
             op_branch(op); // blx (address form)
-        } else if ((opcode1 & 0xe0) == 0xc0) {
+        } else if ((op1 & 0xe0) == 0xc0) {
             // XXX stc2/ldc2
             bad_decode(op);
-        } else if ((opcode1 & 0xf0) == 0xe0) {
+        } else if ((op1 & 0xf0) == 0xe0) {
             // XXX cdp2/mcr2/mrc2
             bad_decode(op);
-        } else if ((opcode1 & 0xd7) == 0x55) {
-            op_pld(op); // pld
         } else {
-            // genuine undefined instructions
+            // XXX probably missing a couple of cases
             op_undefined(op);
         }
     } else {

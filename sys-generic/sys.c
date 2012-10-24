@@ -82,7 +82,10 @@ int initialize_system(void)
     int err;
 
     // create a cpu
-    initialize_cpu(get_config_key_string("cpu", "core", "arm7tdmi"));
+    err = initialize_cpu(get_config_key_string("cpu", "core", "arm7tdmi"));
+    if (err < 0) {
+        return err;
+    }
 
     memset(&sys, 0, sizeof(sys));
 

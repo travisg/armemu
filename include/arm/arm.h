@@ -40,13 +40,16 @@ enum arm_instruction_set {
     ARM_V4 = 0,
     ARM_V5,
     ARM_V5e,
-    ARM_V6
+    ARM_V6,
+    ARM_V7,
 };
 
 enum arm_core {
     ARM7 = 0,
     ARM9,
     ARM9e,
+    ARM11,
+    CORTEX_A8,
 };
 
 /* performance counters, including current cycle and instruction count */

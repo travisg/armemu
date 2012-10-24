@@ -26,6 +26,7 @@
 #include <arm/arm.h>
 
 /* ARM ops */
+void op_nop(struct uop *op);
 void op_branch(struct uop *op);
 void op_bx(struct uop *op);
 void op_msr(struct uop *op);
@@ -47,6 +48,10 @@ void op_coproc_double_reg_transfer(struct uop *op);
 void op_coproc_data_processing(struct uop *op);
 void op_coproc_load_store(struct uop *op);
 void op_no_coproc_installed(struct uop *op, int cp_num);
+
+/* v6+ stuff */
+void op_cps(struct uop *op);
+void op_bfx(struct uop *op);
 
 /* data processing opcode to string */
 const char *dp_op_to_str(int op);

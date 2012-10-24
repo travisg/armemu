@@ -56,6 +56,7 @@ enum uop_opcode {
     // special versions of some of the above instructions
     MOV_IMM,                    // mov and mvn
     MOV_IMM_NZ,                 // mov and mvn, sets NZ condition bits
+    MOV_IMM_TOP,                // movt (top 16bits)
     MOV_REG,                    // mov
     CMP_IMM_S,                  // cmp and cmn, sets full conditions
     CMP_REG_S,                  // cmp, sets full conditions
@@ -103,10 +104,15 @@ enum uop_opcode {
     // count leading zeros
     COUNT_LEADING_ZEROS,
 
+    // bit field extract
+    BFX,
+
     // move from/to status register
     MOVE_TO_SR_IMM,
     MOVE_TO_SR_REG,
     MOVE_FROM_SR,
+
+    CPS,
 
     // various exceptions
     UNDEFINED,
@@ -266,6 +272,16 @@ struct uop {
             byte source_reg;
         } count_leading_zeros;
 
+        // bit field extract
+#define UOPBFX_S_BIT                        0x1 // signed
+        struct {
+            byte dest_reg;
+            byte source_reg;
+            byte shift;
+            byte signpos;
+            word mask;
+        } bfx;
+
         // move from/to status register
 #define UOPMSR_R_BIT                        0x1 // access to spsr instead of cpsr
         struct {
@@ -279,6 +295,14 @@ struct uop {
         struct {
             byte reg;
         } move_from_sr;
+
+        // change processor state
+        struct {
+#define UOPCPS_SETMODE                      0x1
+            word aif_set;
+            word aif_clear;
+            word mode;
+        } cps;
 
         // coprocessor instructions
         struct {

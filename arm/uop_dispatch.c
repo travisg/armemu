@@ -185,6 +185,7 @@ const char *uop_opcode_to_str(int opcode)
             OP_TO_STR(DATA_PROCESSING_REG_SHIFT);
             OP_TO_STR(MOV_IMM);
             OP_TO_STR(MOV_IMM_NZ);
+            OP_TO_STR(MOV_IMM_TOP);
             OP_TO_STR(MOV_REG);
             OP_TO_STR(CMP_IMM_S);
             OP_TO_STR(CMP_REG_S);
@@ -222,9 +223,11 @@ const char *uop_opcode_to_str(int opcode)
             OP_TO_STR(MULTIPLY);
             OP_TO_STR(MULTIPLY_LONG);
             OP_TO_STR(COUNT_LEADING_ZEROS);
+            OP_TO_STR(BFX);
             OP_TO_STR(MOVE_TO_SR_IMM);
             OP_TO_STR(MOVE_TO_SR_REG);
             OP_TO_STR(MOVE_FROM_SR);
+            OP_TO_STR(CPS);
             OP_TO_STR(UNDEFINED);
             OP_TO_STR(SWI);
             OP_TO_STR(BKPT);
@@ -486,7 +489,7 @@ static inline __ALWAYS_INLINE void uop_decode_me_arm(struct uop *op)
 {
     // call the arm decoder and set the pc back to retry this instruction
     ASSERT(cpu.cp_pc != NULL);
-    UOP_TRACE(6, "decoding arm opcode 0x%08x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc);
+    UOP_TRACE(6, "decoding arm opcode 0x%08x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc - 4);
     arm_decode_into_uop(op);
     cpu.pc -= 4; // back the instruction pointer up to retry this instruction
     cpu.cp_pc--;
@@ -497,7 +500,7 @@ static inline __ALWAYS_INLINE void uop_decode_me_thumb(struct uop *op)
 {
     // call the arm decoder and set the pc back to retry this instruction
     ASSERT(cpu.cp_pc != NULL);
-    UOP_TRACE(6, "decoding thumb opcode 0x%04x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc);
+    UOP_TRACE(6, "decoding thumb opcode 0x%04x at pc 0x%x\n", op->undecoded.raw_instruction, cpu.pc - 2);
     thumb_decode_into_uop(op);
     cpu.pc -= 2; // back the instruction pointer up to retry this instruction
     cpu.cp_pc--;
@@ -1755,6 +1758,19 @@ static inline __ALWAYS_INLINE void uop_mov_imm_nz(struct uop *op)
 #endif
 }
 
+// simple load of immediate into top of register, PC may not be target
+static inline __ALWAYS_INLINE void uop_mov_imm_top(struct uop *op)
+{
+    word val = get_reg(op->simple_dp_imm.dest_reg);
+    val &= 0xffff;
+    val |= op->simple_dp_imm.immediate;
+    put_reg_nopc(op->simple_dp_imm.dest_reg, val);
+
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_DATA_PROC);
+#endif
+}
+
 // simple mov from register to register, PC may not be target
 static inline __ALWAYS_INLINE void uop_mov_reg(struct uop *op)
 {
@@ -2647,6 +2663,31 @@ static inline __ALWAYS_INLINE void uop_count_leading_zeros(struct uop *op)
 #endif
 }
 
+static inline __ALWAYS_INLINE void uop_bfx(struct uop *op)
+{
+    word val;
+
+    ASSERT_VALID_REG(op->bfx.source_reg);
+    ASSERT_VALID_REG(op->bfx.dest_reg);
+
+    // get the value we're working with
+    val = get_reg(op->bfx.source_reg);
+
+    val >>= op->bfx.shift;
+    val &= op->bfx.mask;
+
+    if (op->flags & UOPBFX_S_BIT) {
+        val = SIGN_EXTEND(val, op->bfx.signpos);
+    }
+
+    // put the result back
+    put_reg(op->bfx.dest_reg, val);
+
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_MISC);
+#endif
+}
+
 static inline __ALWAYS_INLINE void uop_move_to_sr_imm(struct uop *op)
 {
     reg_t old_psr, new_psr;
@@ -2753,6 +2794,22 @@ static inline __ALWAYS_INLINE void uop_move_from_sr(struct uop *op)
 #endif
 }
 
+static inline __ALWAYS_INLINE void uop_cps(struct uop *op)
+{
+    if (!arm_in_priviledged())
+        return; // NOP in user space
+
+    cpu.cpsr |= op->cps.aif_set;
+    cpu.cpsr &= ~op->cps.aif_clear;
+
+    if (op->flags & UOPCPS_SETMODE) {
+        set_cpu_mode(op->cps.mode & PSR_MODE_MASK);
+    }
+
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_MISC);
+#endif
+}
 
 static inline __ALWAYS_INLINE void uop_undefined(struct uop *op)
 {
@@ -3021,6 +3078,9 @@ int uop_dispatch_loop(void)
             case MOV_IMM_NZ: // move immediate value into register, set NZ condition
                 uop_mov_imm_nz(op);
                 break;
+            case MOV_IMM_TOP: // move immediate value into top half of register
+                uop_mov_imm_top(op);
+                break;
             case MOV_REG: // move one register to another
                 uop_mov_reg(op);
                 break;
@@ -3135,6 +3195,9 @@ int uop_dispatch_loop(void)
             case COUNT_LEADING_ZEROS:
                 uop_count_leading_zeros(op);
                 break;
+            case BFX:
+                uop_bfx(op);
+                break;
             case MOVE_TO_SR_IMM:
                 uop_move_to_sr_imm(op);
                 break;
@@ -3143,6 +3206,9 @@ int uop_dispatch_loop(void)
                 break;
             case MOVE_FROM_SR:
                 uop_move_from_sr(op);
+                break;
+            case CPS:
+                uop_cps(op);
                 break;
             case UNDEFINED:
                 uop_undefined(op);

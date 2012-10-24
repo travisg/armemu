@@ -50,7 +50,8 @@ static const struct cpu_types cpu_types[] = {
     { "armv4",     ARM_V4,  ARM7,  FALSE, FALSE },
     { "armv5",     ARM_V5,  ARM9,  TRUE,  TRUE },
     { "armv5e",    ARM_V5e, ARM9,  TRUE,  TRUE },
-    { "armv6",     ARM_V6,  ARM9,  TRUE,  TRUE }, // not correct, but no arm11 support yet
+    { "armv6",     ARM_V6,  ARM11,  TRUE,  TRUE },
+    { "armv7-a",   ARM_V7,  CORTEX_A8,  TRUE,  TRUE },
 
     { "arm7tdmi",  ARM_V4,  ARM7,  FALSE, FALSE },
     { "arm7",      ARM_V4,  ARM7,  FALSE, FALSE },
@@ -59,6 +60,7 @@ static const struct cpu_types cpu_types[] = {
     { "arm9e",     ARM_V5e, ARM9e, TRUE,  TRUE },
     { "arm926ejs", ARM_V5e, ARM9e, TRUE,  TRUE },
     { "arm926",    ARM_V5e, ARM9e, TRUE,  TRUE },
+    { "cortex-a8", ARM_V7, CORTEX_A8, TRUE,  TRUE },
 
     { NULL, 0, 0, 0, 0 },
 };
@@ -77,8 +79,10 @@ int initialize_cpu(const char *cpu_type)
     cpu.core = ARM7;
 
     if (cpu_type) {
+        bool found = FALSE;
         for (t = cpu_types; t->name; t++) {
             if (!strcasecmp(t->name, cpu_type)) {
+                found = TRUE;
                 cpu.isa = t->isa;
                 cpu.core = t->core;
 
@@ -90,6 +94,11 @@ int initialize_cpu(const char *cpu_type)
                 mmu_init(t->with_mmu);
                 break;
             }
+        }
+
+        if (!found) {
+            fprintf(stderr, "error: unknown cpu type %s\n", cpu_type);
+            return -1;
         }
     }
 

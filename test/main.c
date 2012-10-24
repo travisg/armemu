@@ -8,6 +8,7 @@ static int has_display = 0;
 
 void arm_enable_ints(void);
 void armfunc(int a);
+void armasm(void);
 
 // gcc seems to emit a call to this
 void __gccmain(void)
@@ -17,6 +18,7 @@ void __gccmain(void)
 void cpufunc(void)
 {
 //  thumbfunc(17);
+    armasm();
     armfunc(17);
 }
 

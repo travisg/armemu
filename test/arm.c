@@ -53,3 +53,27 @@ int armfunc(int a)
     return foo > 87;
 }
 
+__attribute__((naked)) void armasm(void)
+{
+    asm(
+        /* PLD instruction */
+        "pld		[r0];"
+
+        /* clz instruction */
+        "clz		r0, r1;"
+
+        /* ubfx */
+        "ubfx	r0, r1, #0, #1;"
+        "ubfx	r0, r1, #1, #1;"
+        "ubfx	r0, r1, #30, #2;"
+        "sbfx	r0, r1, #0, #1;"
+        "sbfx	r0, r1, #30, #2;"
+        "sbfx	r0, r1, #1, #31;"
+
+        "movw	r2, #0x5678;"
+        "movt	r2, #0x1234;"
+
+        "bx	lr;"
+    );
+}
+

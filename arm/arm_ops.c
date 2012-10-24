@@ -67,6 +67,13 @@ const char *dp_op_to_str(int op)
     }
 }
 
+void op_nop(struct uop *op)
+{
+    op->opcode = NOP;
+
+    CPU_TRACE(5, "\t\tNOP\n");
+}
+
 void op_branch(struct uop *op)
 {
     word ins = op->undecoded.raw_instruction;
@@ -297,6 +304,48 @@ void op_swi(struct uop *op)
     op->cond = (ins >> COND_SHIFT) & COND_MASK;
 
     CPU_TRACE(5, "swi 0x%x\n", ins & 0x00ffffff);
+}
+
+void op_cps(struct uop *op)
+{
+    word ins = op->undecoded.raw_instruction;
+
+    if (get_isa() < ARM_V6) {
+        op_undefined(op);
+        return;
+    }
+
+    int imod = BITS_SHIFT(ins, 19, 18);
+    int mode = BITS(ins, 4, 0);
+#define M BIT(ins, 17)
+#define A BIT(ins, 8)
+#define I BIT(ins, 7)
+#define F BIT(ins, 6)
+
+    CPU_TRACE(5, "cps imod 0x%x mode 0x%x setmode %d A %d I %d F %d\n",
+              imod, mode, M ? 1 : 0, A ? 1 : 0, I ? 1 : 0, F ? 1 : 0);
+
+    op->opcode = CPS;
+    op->flags = 0;
+    op->cond = COND_AL;
+    op->cps.aif_set = 0;
+    op->cps.aif_clear = 0;
+    op->cps.mode = mode;
+
+    op->flags |= M ? UOPCPS_SETMODE : 0;
+
+    if (imod == 0x2) {
+        // bits to be set in the AIF fields in the CPSR
+        op->cps.aif_set = A | I | F;
+    } else if (imod == 0x3) {
+        // bits to be cleared in the AIF fields in the CPSR
+        op->cps.aif_clear = A | I | F;
+    }
+
+#undef F
+#undef I
+#undef A
+#undef M
 }
 
 void op_undefined(struct uop *op)
@@ -564,6 +613,27 @@ imm_longform:
             break;
         }
         case IMM: {
+            /* look for MOVW/MOVT instructions, which are encoded as a special form of immedate TST/CMP with no S bit */
+            if (get_isa() >= ARM_V7) {
+                if (!S && opcode == AOP_TST) { // MOVW
+                    op->opcode = MOV_IMM;
+                    op->simple_dp_imm.dest_reg = Rd;
+                    word immed = (BITS_SHIFT(ins, 19, 16) << 12) | BITS(ins, 11, 0);
+                    op->simple_dp_imm.immediate = immed;
+
+                    CPU_TRACE(6, "\t\tMOV_IMM: Rd %d immed 0x%x\n", Rd, immed);
+                    break;
+                } else if (!S && opcode == AOP_CMP) { // MOVT
+                    op->opcode = MOV_IMM_TOP;
+                    op->simple_dp_imm.dest_reg = Rd;
+                    word immed = (BITS_SHIFT(ins, 19, 16) << 12) | BITS(ins, 11, 0);
+                    op->simple_dp_imm.immediate = immed << 16;
+
+                    CPU_TRACE(6, "\t\tMOV_IMM_TOP: Rd %d immed 0x%x\n", Rd, op->simple_dp_imm.immediate);
+                    break;
+                }
+            }
+
             word immed = BITS(ins, 7, 0);
             int rotate_imm = BITS_SHIFT(ins, 11, 8);
 
@@ -1087,5 +1157,42 @@ void op_load_store_multiple(struct uop *op)
 #undef W
 #undef U
 #undef P
+}
+
+void op_bfx(struct uop *op)
+{
+    word ins = op->undecoded.raw_instruction;
+    int Rd, Rn;
+    int S;
+
+    // only supported on ARMv6+
+    if (get_isa() < ARM_V6) {
+        op_undefined(op);
+        return;
+    }
+
+    // decode the instruction
+    S = !BIT(ins, 22);
+    Rd = BITS_SHIFT(ins, 15, 12);
+    Rn = BITS(ins, 3, 0);
+    word width = BITS_SHIFT(ins, 20, 16) + 1;
+    word lsb = BITS_SHIFT(ins, 11, 7);
+
+    // translate
+    op->opcode = BFX;
+    op->cond = (ins >> COND_SHIFT) & COND_MASK;
+    op->flags = S ? UOPBFX_S_BIT : 0;
+    op->bfx.dest_reg = Rd;
+    op->bfx.source_reg = Rn;
+    op->bfx.shift = lsb;
+
+    if (width + lsb >= 32) {
+        // unpredictable
+        width = 32 - lsb;
+    }
+    op->bfx.signpos = width - 1;
+    op->bfx.mask = 0xffffffff >> (32 - width);
+
+    CPU_TRACE(5, "\t\top_bfx: Rd %d Rn %d, S %d, width %d, lsb %d, signpos %d\n", Rd, Rn, S ? 1 : 0, width, lsb, op->bfx.signpos);
 }
 

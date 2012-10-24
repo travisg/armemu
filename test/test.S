@@ -46,37 +46,23 @@ foo:
 reset: /* arm, in svc mode */
 //	b		test
 
-	/* PLD instruction */
-	pld		[r0]
-
-	/* clz instruction */
-	clz		r0, r1
-	
 	/* set up the svc stack */
 	ldr		sp, =svc_stack_top
 
 	/* set up the stack for irq, fiq, abort, undefined, and lastly system mode */
-	mrs		r0, cpsr
-	bic		r0, r0, #0x1f
-
-	orr		r1, r0, #0x12 // irq
-	msr		cpsr_c, r1
+	cps		#0x12 // irq
 	ldr		sp, =irq_stack_top
 
-	orr		r1, r0, #0x11 // fiq
-	msr		cpsr_c, r1
+	cps		#0x11 // irq
 	ldr		sp, =fiq_stack_top
 		
-	orr		r1, r0, #0x17 // abort
-	msr		cpsr_c, r1
+	cps		#0x17 // abort
 	ldr		sp, =abt_stack_top
 
-	orr		r1, r0, #0x1b // undefined
-	msr		cpsr_c, r1
+	cps		#0x1b // undefined
 	ldr		sp, =und_stack_top
 
-	orr		r1, r0, #0x1f // system
-	msr		cpsr_c, r1
+	cps		#0x1f // system
 	ldr		sp, =sys_stack_top
 	// leave the cpu in system mode
 
