@@ -4,6 +4,8 @@ build-*
 *.o
 *.To
 *.bin
+*.orig
 tags
 TAGS
+cscope.out
 local.mk

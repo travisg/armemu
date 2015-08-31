@@ -2,7 +2,7 @@
 #define __CONSOLE_H
 
 enum {
-	KEY_MOD_UP = 0x80000000
+    KEY_MOD_UP = 0x80000000
 };
 
 // keyboard routines

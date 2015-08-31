@@ -16,6 +16,6 @@ unsigned int *get_fb(void);
 #define SCREEN_FB_SIZE (4*1024*1024)
 
 // there is more buffer available for blitting to/from
-#define SCREEN_BUF_Y (SCREEN_FB_SIZE / SCREEN_X / (SCREEN_BITDEPTH / 8)) 
+#define SCREEN_BUF_Y (SCREEN_FB_SIZE / SCREEN_X / (SCREEN_BITDEPTH / 8))
 
 #endif

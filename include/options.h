@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -39,9 +39,9 @@
 
 #define DUMP_STATS      0 // should we run a thread that dumps stats once a second
 
-#define COUNT_CYCLES 	1 // should we try to accurately count cycles
-#define COUNT_ARM_OPS	0
-#define COUNT_UOPS		0
+#define COUNT_CYCLES    1 // should we try to accurately count cycles
+#define COUNT_ARM_OPS   0
+#define COUNT_UOPS      0
 #define COUNT_ARITH_UOPS 0
 #define COUNT_MMU_OPS   0
 
@@ -53,7 +53,7 @@
 // systemwide asserts
 #if 0
 #define ASSERT(x) \
-	if(unlikely(!(x))) panic_cpu("assert failed at %s:%d\n", __FUNCTION__, __LINE__);
+    if(unlikely(!(x))) panic_cpu("assert failed at %s:%d\n", __FUNCTION__, __LINE__);
 #else
 #define ASSERT(x)
 #endif

@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -45,220 +45,220 @@
 #endif
 
 static struct bdev {
-	int fd;
+    int fd;
 
-	off_t length;
+    off_t length;
 
-	// pending command stuff
-	uint cmd;
-	armaddr_t trans_addr;
-	off_t trans_off;
-	size_t trans_len;
+    // pending command stuff
+    uint cmd;
+    armaddr_t trans_addr;
+    off_t trans_off;
+    size_t trans_len;
 
-	// error codes
-	uint last_err;
+    // error codes
+    uint last_err;
 } *bdev;
 
 static uint bdev_read(armaddr_t address, off_t offset, size_t length)
 {
-	SYS_TRACE(1, "sys: bdev_read at 0x%08x, offset 0x%16llx, size %zd\n", 
-		address, offset, length);
+    SYS_TRACE(1, "sys: bdev_read at 0x%08x, offset 0x%16llx, size %zd\n",
+              address, offset, length);
 
-	byte buf[4096];
+    byte buf[4096];
 
-	lseek(bdev->fd, offset, SEEK_SET);
-	while (length > 0) {
-		size_t tohandle = MIN(sizeof(buf), length);
+    lseek(bdev->fd, offset, SEEK_SET);
+    while (length > 0) {
+        size_t tohandle = MIN(sizeof(buf), length);
 
-		ssize_t err = read(bdev->fd, buf, tohandle);
-		if (err != (ssize_t)tohandle)
-			return BDEV_CMD_ERR_GENERAL;
+        ssize_t err = read(bdev->fd, buf, tohandle);
+        if (err != (ssize_t)tohandle)
+            return BDEV_CMD_ERR_GENERAL;
 
-		size_t i;
-		for (i = 0; i < tohandle / 4; i++) {
-			sys_write_mem_word(address + i*4, *(word *)(&buf[i * 4]));
-		}
-		
-		for (; i < tohandle; i++)
-			sys_write_mem_byte(address + i, *(word *)(&buf[i]));
+        size_t i;
+        for (i = 0; i < tohandle / 4; i++) {
+            sys_write_mem_word(address + i*4, *(word *)(&buf[i * 4]));
+        }
 
-		length -= tohandle;
-		address += tohandle;
-	}
+        for (; i < tohandle; i++)
+            sys_write_mem_byte(address + i, *(word *)(&buf[i]));
 
-	return BDEV_CMD_ERR_NONE;
+        length -= tohandle;
+        address += tohandle;
+    }
+
+    return BDEV_CMD_ERR_NONE;
 }
 
 static uint bdev_write(armaddr_t address, off_t offset, size_t length)
 {
-	SYS_TRACE(5, "sys: bdev_write at 0x%08x, offset 0x%16llx, size %zd\n", 
-		address, offset, length);
+    SYS_TRACE(5, "sys: bdev_write at 0x%08x, offset 0x%16llx, size %zd\n",
+              address, offset, length);
 
-	byte buf[4096];
+    byte buf[4096];
 
-	lseek(bdev->fd, offset, SEEK_SET);
-	while (length > 0) {
-		size_t tohandle = MIN(sizeof(buf), length);
+    lseek(bdev->fd, offset, SEEK_SET);
+    while (length > 0) {
+        size_t tohandle = MIN(sizeof(buf), length);
 
-		size_t i;
-		for (i = 0; i < tohandle / 4; i++) {
-			*(word *)(&buf[i * 4]) = sys_read_mem_word(address + i*4);
-		}
-		
-		for (; i < tohandle; i++)
-			*(word *)(&buf[i]) = sys_read_mem_byte(address + i);
+        size_t i;
+        for (i = 0; i < tohandle / 4; i++) {
+            *(word *)(&buf[i * 4]) = sys_read_mem_word(address + i*4);
+        }
 
-		ssize_t err = write(bdev->fd, buf, tohandle);
-		if (err != (ssize_t)tohandle)
-			return BDEV_CMD_ERR_GENERAL;
+        for (; i < tohandle; i++)
+            *(word *)(&buf[i]) = sys_read_mem_byte(address + i);
 
-		length -= tohandle;
-		address += tohandle;
-	}
+        ssize_t err = write(bdev->fd, buf, tohandle);
+        if (err != (ssize_t)tohandle)
+            return BDEV_CMD_ERR_GENERAL;
 
-	return BDEV_CMD_ERR_NONE;
+        length -= tohandle;
+        address += tohandle;
+    }
+
+    return BDEV_CMD_ERR_NONE;
 }
 
 static uint bdev_erase(off_t offset, size_t length)
 {
-	SYS_TRACE(5, "sys: bdev_erase offset 0x%16llx, size %zd\n", 
-		offset, length);
+    SYS_TRACE(5, "sys: bdev_erase offset 0x%16llx, size %zd\n",
+              offset, length);
 
-	char buf[512];
-	memset(buf, 0, sizeof(buf));
+    char buf[512];
+    memset(buf, 0, sizeof(buf));
 
-	lseek(bdev->fd, offset, SEEK_SET);
-	while (length > 0) {
-		size_t towrite = MIN(sizeof(buf), length);
+    lseek(bdev->fd, offset, SEEK_SET);
+    while (length > 0) {
+        size_t towrite = MIN(sizeof(buf), length);
 
-		int err = write(bdev->fd, buf, towrite);
-		if (err != 0)
-			return BDEV_CMD_ERR_GENERAL;
+        int err = write(bdev->fd, buf, towrite);
+        if (err != 0)
+            return BDEV_CMD_ERR_GENERAL;
 
-		length -= towrite;
-	}
+        length -= towrite;
+    }
 
-	return BDEV_CMD_ERR_NONE;
+    return BDEV_CMD_ERR_NONE;
 }
 
 static word bdev_regs_get_put(armaddr_t address, word data, int size, int put)
 {
-	word val;
+    word val;
 
-	SYS_TRACE(5, "sys: bdev_regs_get_put at 0x%08x, data 0x%08x, size %d, put %d\n", 
-		address, data, size, put);
+    SYS_TRACE(5, "sys: bdev_regs_get_put at 0x%08x, data 0x%08x, size %d, put %d\n",
+              address, data, size, put);
 
-	val = 0;
-	switch (address) {
-		case BDEV_CMD:
-			if (put) {
-				/* mask out the command portion of the write */
-				data &= BDEV_CMD_MASK;
+    val = 0;
+    switch (address) {
+        case BDEV_CMD:
+            if (put) {
+                /* mask out the command portion of the write */
+                data &= BDEV_CMD_MASK;
 
-				switch (data) {
-					case BDEV_CMD_READ:
-						bdev->last_err = bdev_read(bdev->trans_addr, bdev->trans_off, bdev->trans_len);
-						break;
-					case BDEV_CMD_WRITE:
-						bdev->last_err = bdev_write(bdev->trans_addr, bdev->trans_off, bdev->trans_len);
-						break;
-					case BDEV_CMD_ERASE:
-						bdev->last_err = bdev_erase(bdev->trans_off, bdev->trans_len);
-						break;
-				}
-			} else {
-				// read last error
-				val = (bdev->last_err << BDEV_CMD_ERRSHIFT) | bdev->cmd;
-			}
-			break;
-		case BDEV_CMD_ADDR:
-			if (put) {
-				bdev->trans_addr = data;
-			} else {
-				val = bdev->trans_addr;
-			}
-			break;
-		case BDEV_CMD_OFF:
-			if (put) {
-				bdev->trans_off = (bdev->trans_off & 0xffffffff00000000ULL) | data;
-			} else {
-				val = (bdev->trans_off & 0xffffffff);
-			}
-			break;
-		case BDEV_CMD_OFF + 4:
-			if (put) {
-				bdev->trans_off = (bdev->trans_off & 0xffffffff) | ((off_t)data << 32);
-			} else {
-				val = (bdev->trans_off >> 32);
-			}
-			break;
-		case BDEV_CMD_LEN:
-			if (put) {
-				bdev->trans_len = data;
-			} else {
-				val = bdev->trans_len;
-			}
-			break;
-		case BDEV_LEN:
-			if (!put) {
-				val = (bdev->length & 0xffffffff);
-			}
-			break;
-		case BDEV_LEN + 4:
-			if (!put) {
-				val = (bdev->length >> 32);
-			}
-			break;
+                switch (data) {
+                    case BDEV_CMD_READ:
+                        bdev->last_err = bdev_read(bdev->trans_addr, bdev->trans_off, bdev->trans_len);
+                        break;
+                    case BDEV_CMD_WRITE:
+                        bdev->last_err = bdev_write(bdev->trans_addr, bdev->trans_off, bdev->trans_len);
+                        break;
+                    case BDEV_CMD_ERASE:
+                        bdev->last_err = bdev_erase(bdev->trans_off, bdev->trans_len);
+                        break;
+                }
+            } else {
+                // read last error
+                val = (bdev->last_err << BDEV_CMD_ERRSHIFT) | bdev->cmd;
+            }
+            break;
+        case BDEV_CMD_ADDR:
+            if (put) {
+                bdev->trans_addr = data;
+            } else {
+                val = bdev->trans_addr;
+            }
+            break;
+        case BDEV_CMD_OFF:
+            if (put) {
+                bdev->trans_off = (bdev->trans_off & 0xffffffff00000000ULL) | data;
+            } else {
+                val = (bdev->trans_off & 0xffffffff);
+            }
+            break;
+        case BDEV_CMD_OFF + 4:
+            if (put) {
+                bdev->trans_off = (bdev->trans_off & 0xffffffff) | ((off_t)data << 32);
+            } else {
+                val = (bdev->trans_off >> 32);
+            }
+            break;
+        case BDEV_CMD_LEN:
+            if (put) {
+                bdev->trans_len = data;
+            } else {
+                val = bdev->trans_len;
+            }
+            break;
+        case BDEV_LEN:
+            if (!put) {
+                val = (bdev->length & 0xffffffff);
+            }
+            break;
+        case BDEV_LEN + 4:
+            if (!put) {
+                val = (bdev->length >> 32);
+            }
+            break;
 
-		default:
-			SYS_TRACE(0, "sys: unhandled bdev address 0x%08x\n", address);
-			return 0;
-	}
+        default:
+            SYS_TRACE(0, "sys: unhandled bdev address 0x%08x\n", address);
+            return 0;
+    }
 
-	return val;
+    return val;
 }
 
 int initialize_blockdev(void)
 {
-	const char *str;
+    const char *str;
 
-	bdev = calloc(sizeof(*bdev), 1);
-	bdev->fd = -1;
+    bdev = calloc(sizeof(*bdev), 1);
+    bdev->fd = -1;
 
-	install_mem_handler(BDEV_REGS_BASE, BDEV_REGS_SIZE, &bdev_regs_get_put, NULL);
+    install_mem_handler(BDEV_REGS_BASE, BDEV_REGS_SIZE, &bdev_regs_get_put, NULL);
 
-	str = get_config_key_string("block", "file", "");
-	if (strlen(str) == 0)
-		return -1;
+    str = get_config_key_string("block", "file", "");
+    if (strlen(str) == 0)
+        return -1;
 
-	unsigned int flags = O_RDWR;
+    unsigned int flags = O_RDWR;
 
-	if (get_config_key_bool("block", "sync", 0))
-		flags |= O_SYNC;
+    if (get_config_key_bool("block", "sync", 0))
+        flags |= O_SYNC;
 
-	bdev->fd = open(str, flags);
-	if (bdev->fd < 0) {
-		SYS_TRACE(0, "sys: unable to open block device file '%s'\n", str);
-		return -1;
-	}
+    bdev->fd = open(str, flags);
+    if (bdev->fd < 0) {
+        SYS_TRACE(0, "sys: unable to open block device file '%s'\n", str);
+        return -1;
+    }
 
-	/* existing file/device, get length */
-	struct stat st;
-	fstat(bdev->fd, &st);
+    /* existing file/device, get length */
+    struct stat st;
+    fstat(bdev->fd, &st);
 
 #ifdef __LINUX
-	if (st.st_mode & S_IFBLK) {
-		long blocks = 0;
-		ioctl(bdev->fd, BLKGETSIZE, &blocks);
+    if (st.st_mode & S_IFBLK) {
+        long blocks = 0;
+        ioctl(bdev->fd, BLKGETSIZE, &blocks);
 
-		bdev->length = (uint64_t)blocks * 512;
-	} else
+        bdev->length = (uint64_t)blocks * 512;
+    } else
 #endif
-	{
-		bdev->length = st.st_size;
-	}
-	SYS_TRACE(0, "sys: bdev fd %d, len %lld\n", bdev->fd, bdev->length);
+    {
+        bdev->length = st.st_size;
+    }
+    SYS_TRACE(0, "sys: bdev fd %d, len %lld\n", bdev->fd, bdev->length);
 
-	return 0;		
+    return 0;
 }
 

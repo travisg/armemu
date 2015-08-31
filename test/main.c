@@ -16,169 +16,169 @@ void __gccmain(void)
 
 void cpufunc(void)
 {
-//	thumbfunc(17);
-	armfunc(17);
+//  thumbfunc(17);
+    armfunc(17);
 }
 
 int main(void)
 {
-	int i;
-	char c;
-	
-	cpufunc();
+    int i;
+    char c;
 
-	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_DISPLAY)
-		has_display = 1;
+    cpufunc();
 
-//	for(i = 0xff; i >= 0; i -= 0x10) 
-//		clear_display(i | (i<<8) | (i<<16) | (i<<24));
+    if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_DISPLAY)
+        has_display = 1;
 
-	if (has_display) {
-		clear_display(0);
-		initialize_text();
-		set_text_color(0xffffffff, 0);
-	}
+//  for(i = 0xff; i >= 0; i -= 0x10)
+//      clear_display(i | (i<<8) | (i<<16) | (i<<24));
 
-	puts("console initialized\n");
+    if (has_display) {
+        clear_display(0);
+        initialize_text();
+        set_text_color(0xffffffff, 0);
+    }
 
-	puts("emulator features:\n");
-	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_DISPLAY)
-		puts("\tdisplay\n");
-	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_CONSOLE)
-		puts("\tconsole\n");
-	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_NETWORK)
-		puts("\tnetwork\n");
-	if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_BLOCKDEV)
-		puts("\tblockdevice\n");
+    puts("console initialized\n");
 
-	read_cpu_id();
+    puts("emulator features:\n");
+    if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_DISPLAY)
+        puts("\tdisplay\n");
+    if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_CONSOLE)
+        puts("\tconsole\n");
+    if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_NETWORK)
+        puts("\tnetwork\n");
+    if (*REG(SYSINFO_FEATURES) & SYSINFO_FEATURE_BLOCKDEV)
+        puts("\tblockdevice\n");
 
-	mmu_init();
-	
-	puts("enabling interrupts\n");
-	arm_enable_ints();
+    read_cpu_id();
 
-	puts("setting timer\n");
-	*REG(PIT_INTERVAL) = 500;
-	*REG(PIT_START_PERIODIC) = 1;
+    mmu_init();
 
-//	*REG(DEBUG_SET_TRACELEVEL_SYS) = 5;
-	*REG(BDEV_CMD_ADDR) = 0x200000;
-	*REG64(BDEV_CMD_OFF) = 1024;
-	*REG(BDEV_CMD_LEN) = 4096;
-	*REG(BDEV_CMD) = BDEV_CMD_ERASE;
-	*REG(BDEV_CMD) = BDEV_CMD_WRITE;
-	*REG(BDEV_CMD) = BDEV_CMD_READ;
+    puts("enabling interrupts\n");
+    arm_enable_ints();
 
-	*REG(BDEV_CMD_ADDR) = 0;
-	*REG64(BDEV_CMD_OFF) = 0;
-	*REG(BDEV_CMD_LEN) = 4096;
-	*REG(BDEV_CMD) = BDEV_CMD_WRITE;
-//	*REG(DEBUG_SET_TRACELEVEL_SYS) = 1;
+    puts("setting timer\n");
+    *REG(PIT_INTERVAL) = 500;
+    *REG(PIT_START_PERIODIC) = 1;
 
-	puts("keyboard test:\n");
-	c = 'a';
-	unsigned long long off = 0;
-	for(;;) {
-		unsigned int key;
+//  *REG(DEBUG_SET_TRACELEVEL_SYS) = 5;
+    *REG(BDEV_CMD_ADDR) = 0x200000;
+    *REG64(BDEV_CMD_OFF) = 1024;
+    *REG(BDEV_CMD_LEN) = 4096;
+    *REG(BDEV_CMD) = BDEV_CMD_ERASE;
+    *REG(BDEV_CMD) = BDEV_CMD_WRITE;
+    *REG(BDEV_CMD) = BDEV_CMD_READ;
 
-		/* do some cpu intensive stuff for a bit */
-		cpufunc();
+    *REG(BDEV_CMD_ADDR) = 0;
+    *REG64(BDEV_CMD_OFF) = 0;
+    *REG(BDEV_CMD_LEN) = 4096;
+    *REG(BDEV_CMD) = BDEV_CMD_WRITE;
+//  *REG(DEBUG_SET_TRACELEVEL_SYS) = 1;
 
-		/* see if a keyboard interrupt went off */
-		if(read_keyboard(&key) >= 0)
-			if((key & KEY_MOD_UP) == 0)
-				putchar(key);
+    puts("keyboard test:\n");
+    c = 'a';
+    unsigned long long off = 0;
+    for (;;) {
+        unsigned int key;
 
-		/* do some block io */
-//		block_read(off, 1024*1024, 0x200000);
-//		off += 1024*1024;
+        /* do some cpu intensive stuff for a bit */
+        cpufunc();
 
-//		puts("abc ");
-//		draw_char('a', 0, 0);
-//		draw_char('b', 6, 0);
-//		draw_char('c', 12, 0);
-//		test_display();
-	}
+        /* see if a keyboard interrupt went off */
+        if (read_keyboard(&key) >= 0)
+            if ((key & KEY_MOD_UP) == 0)
+                putchar(key);
+
+        /* do some block io */
+//      block_read(off, 1024*1024, 0x200000);
+//      off += 1024*1024;
+
+//      puts("abc ");
+//      draw_char('a', 0, 0);
+//      draw_char('b', 6, 0);
+//      draw_char('c', 12, 0);
+//      test_display();
+    }
 }
 
 void irq_handler(void)
 {
-	int vector;
+    int vector;
 
-	/* test the codepage removal */
-	arm_invalidate_i_cache();
+    /* test the codepage removal */
+    arm_invalidate_i_cache();
 
 #if 0
-	*REG(SYSINFO_TIME_LATCH) = 0; // latch the system time
-	static unsigned int lasttime; // in us
-	unsigned int time;
+    *REG(SYSINFO_TIME_LATCH) = 0; // latch the system time
+    static unsigned int lasttime; // in us
+    unsigned int time;
 
-	unsigned int rawtime[2];
-	rawtime[0] = *REG(SYSINFO_TIME_SECS);
-	rawtime[1] = *REG(SYSINFO_TIME_USECS);
+    unsigned int rawtime[2];
+    rawtime[0] = *REG(SYSINFO_TIME_SECS);
+    rawtime[1] = *REG(SYSINFO_TIME_USECS);
 
-	time = ((rawtime[0] * 1000000) + rawtime[1]);
-	
-	unsigned int delta = time - lasttime;
-	debug_dump_memory_words(&delta, 1);
+    time = ((rawtime[0] * 1000000) + rawtime[1]);
 
-	lasttime = time;
+    unsigned int delta = time - lasttime;
+    debug_dump_memory_words(&delta, 1);
+
+    lasttime = time;
 #endif
 
-	vector = *REG(PIC_CURRENT_NUM);
-	switch(vector) {
-	case INT_PIT:
-		dputs("irq timer\n");
-		*REG(PIT_CLEAR_INT) = 1;
-		break;
-	case INT_KEYBOARD:
-		dputs("irq keyboard\n");
-		keyboard_int_handler();
-		break;
-	case INT_NET:
-		dputs("irq network\n");
-		network_int_handler();
-		break;
-	default:
-		puts("unknown irq\n");
-		break;
-	case 0xffffffff:
-		/* false alarm */
-		break;
-	}
+    vector = *REG(PIC_CURRENT_NUM);
+    switch (vector) {
+        case INT_PIT:
+            dputs("irq timer\n");
+            *REG(PIT_CLEAR_INT) = 1;
+            break;
+        case INT_KEYBOARD:
+            dputs("irq keyboard\n");
+            keyboard_int_handler();
+            break;
+        case INT_NET:
+            dputs("irq network\n");
+            network_int_handler();
+            break;
+        default:
+            puts("unknown irq\n");
+            break;
+        case 0xffffffff:
+            /* false alarm */
+            break;
+    }
 }
 
 void fiq_handler(void)
 {
-	puts("fiq\n");
+    puts("fiq\n");
 }
 
 void data_abort_handler(void)
 {
-	puts("data abort\n");
-	
-	puts("spinning forever...\n");
-	for(;;);
+    puts("data abort\n");
+
+    puts("spinning forever...\n");
+    for (;;);
 }
 
 void prefetch_abort_handler(void)
 {
-	puts("prefetch abort\n");
+    puts("prefetch abort\n");
 
-	puts("spinning forever...\n");
-	for(;;);
+    puts("spinning forever...\n");
+    for (;;);
 }
 
 void undefined_handler(void)
 {
-	puts("undefined\n");
-	puts("spinning forever...\n");
-	for(;;);
+    puts("undefined\n");
+    puts("spinning forever...\n");
+    for (;;);
 }
 
 void swi_handler(void)
 {
-	puts("swi handler\n");
+    puts("swi handler\n");
 }
 

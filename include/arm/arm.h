@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -37,125 +37,125 @@ void panic_cpu(const char *fmt, ...);
 void shutdown_cpu(void);
 
 enum arm_instruction_set {
-	ARM_V4 = 0,
-	ARM_V5,
-	ARM_V5e,
-	ARM_V6
+    ARM_V4 = 0,
+    ARM_V5,
+    ARM_V5e,
+    ARM_V6
 };
 
 enum arm_core {
-	ARM7 = 0,
-	ARM9,
-	ARM9e,
+    ARM7 = 0,
+    ARM9,
+    ARM9e,
 };
 
 /* performance counters, including current cycle and instruction count */
 /* to disable for speed purposes, move MAX_PERF_COUNTER up in the enum */
 enum perf_counter_type {
-	INS_COUNT,
+    INS_COUNT,
 
-	EXCEPTIONS,
+    EXCEPTIONS,
 
-	INS_DECODE,
+    INS_DECODE,
 
 #if COUNT_MMU_OPS
-	MMU_READ,
-	MMU_WRITE,
-	MMU_INS_FETCH,
-	MMU_FASTPATH,
-	MMU_SLOWPATH,
-	MMU_SLOW_TRANSLATE,
+    MMU_READ,
+    MMU_WRITE,
+    MMU_INS_FETCH,
+    MMU_FASTPATH,
+    MMU_SLOWPATH,
+    MMU_SLOW_TRANSLATE,
 #endif
 
 #if COUNT_CYCLES
-	CYCLE_COUNT,
+    CYCLE_COUNT,
 #endif
 #if COUNT_ARM_OPS
-	OP_SKIPPED_CONDITION,
-	OP_NOP,
-	OP_LOAD,
-	OP_STORE,
-	OP_DATA_PROC,
-	OP_MUL,
-	OP_BRANCH,
-	OP_COP_REG_TRANS,
-	OP_COP_DATA_PROC,
-	OP_COP_LOAD_STORE,
-	OP_MISC,
+    OP_SKIPPED_CONDITION,
+    OP_NOP,
+    OP_LOAD,
+    OP_STORE,
+    OP_DATA_PROC,
+    OP_MUL,
+    OP_BRANCH,
+    OP_COP_REG_TRANS,
+    OP_COP_DATA_PROC,
+    OP_COP_LOAD_STORE,
+    OP_MISC,
 #endif
 
 #if COUNT_UOPS
-	UOP_BASE,
-	UOP_TOP = UOP_BASE + MAX_UOP_OPCODE,
+    UOP_BASE,
+    UOP_TOP = UOP_BASE + MAX_UOP_OPCODE,
 #endif
 
 #if COUNT_ARITH_UOPS
-	UOP_ARITH_OPCODE,
-	UOP_ARITH_OPCODE_TOP = UOP_ARITH_OPCODE + 16,
+    UOP_ARITH_OPCODE,
+    UOP_ARITH_OPCODE_TOP = UOP_ARITH_OPCODE + 16,
 #endif
 
-	// setting this lower will tend to make the compiler optimize away calls to add_to_perf_count
-	MAX_PERF_COUNTER, 
+    // setting this lower will tend to make the compiler optimize away calls to add_to_perf_count
+    MAX_PERF_COUNTER,
 };
 
 struct perf_counters {
-	int count[MAX_PERF_COUNTER];
+    int count[MAX_PERF_COUNTER];
 };
 
 struct arm_coprocessor {
-	int installed;
-	void *data;
+    int installed;
+    void *data;
 
-	// the callback routines
-	void (*reg_transfer)(word ins, void *data);
-	void (*double_reg_transfer)(word ins, void *data);
-	void (*data_processing)(word ins, void *data);
-	void (*load_store)(word ins, void *data);	
+    // the callback routines
+    void (*reg_transfer)(word ins, void *data);
+    void (*double_reg_transfer)(word ins, void *data);
+    void (*data_processing)(word ins, void *data);
+    void (*load_store)(word ins, void *data);
 };
 
 struct cpu_struct {
-	// regs
-	reg_t pc;			// the real pc
-	struct uop *cp_pc;	// pointer to the current op
-	reg_t cpsr;
-	reg_t r[16];		// contains a "fake" pc made to look as if it's ahead of the current pc
-	reg_t spsr;
-	bool r15_dirty;		// if we wrote into r[15] in the last instruction
+    // regs
+    reg_t pc;           // the real pc
+    struct uop *cp_pc;  // pointer to the current op
+    reg_t cpsr;
+    reg_t r[16];        // contains a "fake" pc made to look as if it's ahead of the current pc
+    reg_t spsr;
+    bool r15_dirty;     // if we wrote into r[15] in the last instruction
 
-	// pending interrupts and mode changes
-	volatile int pending_exceptions;
-	reg_t old_cpsr; // in case of a mode switch, we store the old mode
-	armaddr_t exception_base; // 0 or 0xffff0000 on cpus that support it
+    // pending interrupts and mode changes
+    volatile int pending_exceptions;
+    reg_t old_cpsr; // in case of a mode switch, we store the old mode
+    armaddr_t exception_base; // 0 or 0xffff0000 on cpus that support it
 
-	// cache of uop codepages
-	struct uop_codepage *curr_cp;
-	struct uop_codepage *codepage_hash[CODEPAGE_HASHSIZE];
+    // cache of uop codepages
+    struct uop_codepage *curr_cp;
+    struct uop_codepage *codepage_hash[CODEPAGE_HASHSIZE];
 
-	// free list of codepage structures
-	struct uop_codepage *free_cp_arm;
-	struct uop_codepage *free_cp_thumb;
+    // free list of codepage structures
+    struct uop_codepage *free_cp_arm;
+    struct uop_codepage *free_cp_thumb;
 
-	// truth table of the arm conditions
-	unsigned short condition_table[16];
+    // truth table of the arm conditions
+    unsigned short condition_table[16];
 
-	// cpu config
-	enum arm_instruction_set isa;
-	enum arm_core core;
+    // cpu config
+    enum arm_instruction_set isa;
+    enum arm_core core;
 
-	// tracks emulator performance including cycle count and instruction count
-	struct perf_counters perf_counters;
+    // tracks emulator performance including cycle count and instruction count
+    struct perf_counters perf_counters;
 
-	// routines for the arm's 16 coprocessor slots
-	struct arm_coprocessor coproc[16];
+    // routines for the arm's 16 coprocessor slots
+    struct arm_coprocessor coproc[16];
 
-	// banked_regs
-	reg_t usr_regs_low[5]; // non-fiq r8-r12
-	reg_t usr_regs[2];     // sp, lr
-	reg_t irq_regs[3];     // sp, lr, spsr
-	reg_t svc_regs[3];     //     "
-	reg_t abt_regs[3];     //     "
-	reg_t und_regs[3];     //     "
-	reg_t fiq_regs[8];     // r8-r12, sp, lr, spsr
+    // banked_regs
+    reg_t usr_regs_low[5]; // non-fiq r8-r12
+    reg_t usr_regs[2];     // sp, lr
+    reg_t irq_regs[3];     // sp, lr, spsr
+    reg_t svc_regs[3];     //     "
+    reg_t abt_regs[3];     //     "
+    reg_t und_regs[3];     //     "
+    reg_t fiq_regs[8];     // r8-r12, sp, lr, spsr
 };
 
 extern struct cpu_struct cpu;
@@ -211,40 +211,40 @@ extern struct cpu_struct cpu;
 #define EX_SWI        0x04
 #define EX_PREFETCH   0x08
 #define EX_DATA_ABT   0x10
-#define EX_FIQ        0x40		/* same bits as the cpsr mask bits */
+#define EX_FIQ        0x40      /* same bits as the cpsr mask bits */
 #define EX_IRQ        0x80
 
 /* arm arithmetic opcodes */
 enum {
-	AOP_AND = 0,
-	AOP_EOR,
-	AOP_SUB,
-	AOP_RSB,
-	AOP_ADD,
-	AOP_ADC,
-	AOP_SBC,
-	AOP_RSC,
-	AOP_TST,
-	AOP_TEQ,
-	AOP_CMP,
-	AOP_CMN,
-	AOP_ORR,
-	AOP_MOV,
-	AOP_BIC,
-	AOP_MVN,
+    AOP_AND = 0,
+    AOP_EOR,
+    AOP_SUB,
+    AOP_RSB,
+    AOP_ADD,
+    AOP_ADC,
+    AOP_SBC,
+    AOP_RSC,
+    AOP_TST,
+    AOP_TEQ,
+    AOP_CMP,
+    AOP_CMN,
+    AOP_ORR,
+    AOP_MOV,
+    AOP_BIC,
+    AOP_MVN,
 };
 
 /* shift and rotate helpers */
 #define LSL(val, shift) \
-	(((shift) >= 32) ? 0 : ((val) << (shift)))
+    (((shift) >= 32) ? 0 : ((val) << (shift)))
 #define LSR(val, shift) \
-	(((shift) >= 32) ? 0 : ((val) >> (shift)))
+    (((shift) >= 32) ? 0 : ((val) >> (shift)))
 #define ASR_SIMPLE(val, shift) \
-	(((int)(val)) >> (shift))
+    (((int)(val)) >> (shift))
 #define ASR(val, shift) \
-	(((shift) >= 32) ? (BIT(val, 31) ? (int)-1 : 0) : (((int)(val)) >> (shift)))
+    (((shift) >= 32) ? (BIT(val, 31) ? (int)-1 : 0) : (((int)(val)) >> (shift)))
 #define ROR(val, shift) \
-	(((val) >> (shift)) | ((val) << (32 - (shift))))
+    (((val) >> (shift)) | ((val) << (32 - (shift))))
 
 /* bit manipulation macros */
 #define BIT(x, bit) ((x) & (1 << (bit)))
@@ -257,7 +257,7 @@ enum {
 #define ISPOS(x) (!(BIT(x, 31)))
 
 /* 32-bit sign extension */
-//#define SIGN_EXTEND(val, topbit) (BIT(val, topbit) ? ((val) | (0xffffffff << (topbit))) : (val)) 
+//#define SIGN_EXTEND(val, topbit) (BIT(val, topbit) ? ((val) | (0xffffffff << (topbit))) : (val))
 #define SIGN_EXTEND(val, topbit) (ASR_SIMPLE(LSL(val, 32-(topbit)), 32-(topbit)))
 
 /* ARM routines */
@@ -267,127 +267,127 @@ void set_cpu_mode(int mode);
 
 static inline word do_add(word a, word b, int carry_in, int *carry, int *ovl)
 {
-	word val;
+    word val;
 
-if (!IS_64HOST) {
-	val = a + b + carry_in;
+    if (!IS_64HOST) {
+        val = a + b + carry_in;
 
-	*carry = (ISNEG(a & b) ||				// both operands are negative, or
-			 (ISNEG(a ^ b) && ISPOS(val))); // exactly one of the operands is negative, and result is positive
-} else {
-	/* 64 bit version of the add routine to optimize for the carry flag test */
-	dword bigval;
+        *carry = (ISNEG(a & b) ||               // both operands are negative, or
+                  (ISNEG(a ^ b) && ISPOS(val))); // exactly one of the operands is negative, and result is positive
+    } else {
+        /* 64 bit version of the add routine to optimize for the carry flag test */
+        dword bigval;
 
-	bigval = (dword)a + (dword)b + (dword)carry_in;
-	*carry = BIT_SHIFT(bigval, 32);
-	val = (word)bigval;
-}
+        bigval = (dword)a + (dword)b + (dword)carry_in;
+        *carry = BIT_SHIFT(bigval, 32);
+        val = (word)bigval;
+    }
 
-	*ovl = (!(ISNEG(a ^ b))) && (ISNEG(a ^ val));
+    *ovl = (!(ISNEG(a ^ b))) && (ISNEG(a ^ val));
 
-//	CPU_TRACE(10, "do_add: a 0x%x b 0x%x carry_in 0x%x, carry %d, ovl %d\n",
-//		a, b, carry_in, *carry, *ovl);
+//  CPU_TRACE(10, "do_add: a 0x%x b 0x%x carry_in 0x%x, carry %d, ovl %d\n",
+//      a, b, carry_in, *carry, *ovl);
 
 #if 0
 #if __i386__ || __I386__
-	asm("setc (%0)" :: "r"(carry));
-	asm("seto (%0)" :: "r"(ovl));
+    asm("setc (%0)" :: "r"(carry));
+    asm("seto (%0)" :: "r"(ovl));
 #endif
 #endif
 
-	return val;
+    return val;
 }
 
 static inline void set_condition(unsigned int condition, bool set)
 {
-	if(condition == PSR_THUMB) {
-		CPU_TRACE(7, "setting THUMB bit to %d\n", set);
-	}
+    if (condition == PSR_THUMB) {
+        CPU_TRACE(7, "setting THUMB bit to %d\n", set);
+    }
 
-	if(set)
-		cpu.cpsr |= condition;
-	else
-		cpu.cpsr &= ~condition;
+    if (set)
+        cpu.cpsr |= condition;
+    else
+        cpu.cpsr &= ~condition;
 }
 
 static inline void set_NZ_condition(reg_t val)
 {
-	set_condition(PSR_CC_NEG, BIT(val, 31));
-	set_condition(PSR_CC_ZERO, val == 0);
+    set_condition(PSR_CC_NEG, BIT(val, 31));
+    set_condition(PSR_CC_ZERO, val == 0);
 }
 
 static inline unsigned int get_condition(unsigned int condition)
 {
-	return (cpu.cpsr & condition);
+    return (cpu.cpsr & condition);
 }
 
 static inline reg_t get_reg(int num)
 {
-	ASSERT(num >= 0 && num < 16);
-	return cpu.r[num];
+    ASSERT(num >= 0 && num < 16);
+    return cpu.r[num];
 }
 
 static inline void put_reg(int num, reg_t data)
 {
-	ASSERT(num >= 0 && num < 16);
-	cpu.r[num] = data;
-	if(num == PC) {
-		cpu.r15_dirty = TRUE; // on the next loop, resync the "real" pc (cpu.pc) with cpu.r[15]
-		cpu.r[PC] &= ~1;
-	}
+    ASSERT(num >= 0 && num < 16);
+    cpu.r[num] = data;
+    if (num == PC) {
+        cpu.r15_dirty = TRUE; // on the next loop, resync the "real" pc (cpu.pc) with cpu.r[15]
+        cpu.r[PC] &= ~1;
+    }
 }
 
 static inline void put_reg_nopc(int num, reg_t data)
 {
-	ASSERT(num >= 0 && num < 15);
-	cpu.r[num] = data;
+    ASSERT(num >= 0 && num < 15);
+    cpu.r[num] = data;
 }
 
 static inline bool check_condition(byte condition)
 {
-	// this happens far more often than not
-	if(likely(condition == COND_AL))
-		return TRUE;
-	// check the instructions condition mask against precomputed values of cpsr		
-	return cpu.condition_table[cpu.cpsr >> COND_SHIFT] & (1 << (condition));
+    // this happens far more often than not
+    if (likely(condition == COND_AL))
+        return TRUE;
+    // check the instructions condition mask against precomputed values of cpsr
+    return cpu.condition_table[cpu.cpsr >> COND_SHIFT] & (1 << (condition));
 }
 
 static inline bool arm_in_priviledged(void)
 {
-	return ((cpu.cpsr & PSR_MODE_MASK) != PSR_MODE_user);
+    return ((cpu.cpsr & PSR_MODE_MASK) != PSR_MODE_user);
 }
 
 static inline enum arm_instruction_set get_isa(void)
 {
-	return cpu.isa;
+    return cpu.isa;
 }
 
 static inline enum arm_core get_core(void)
 {
-	return cpu.core;
+    return cpu.core;
 }
 
 static inline void add_to_perf_counter(enum perf_counter_type counter, int add)
 {
-	if(counter < MAX_PERF_COUNTER)
-		cpu.perf_counters.count[counter] += add;
+    if (counter < MAX_PERF_COUNTER)
+        cpu.perf_counters.count[counter] += add;
 }
 
 static inline void inc_perf_counter(enum perf_counter_type counter)
 {
-	add_to_perf_counter(counter, 1);
+    add_to_perf_counter(counter, 1);
 }
 
 #if COUNT_CYCLES
 static inline int get_cycle_count(void)
 {
-	return cpu.perf_counters.count[CYCLE_COUNT];
+    return cpu.perf_counters.count[CYCLE_COUNT];
 }
 #endif
 
 static inline int get_instruction_count(void)
 {
-	return cpu.perf_counters.count[INS_COUNT];
+    return cpu.perf_counters.count[INS_COUNT];
 }
 
 /* function prototypes */

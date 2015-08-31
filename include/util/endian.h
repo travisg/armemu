@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -46,9 +46,9 @@
 
 // define a macro that conditionally swaps
 #define SWAP_WORD(x) \
-	(((x) >> 24) | (((x) >> 8) & 0xff00) | (((x) << 8) & 0xff0000) | ((x) << 24))
+    (((x) >> 24) | (((x) >> 8) & 0xff00) | (((x) << 8) & 0xff0000) | ((x) << 24))
 #define SWAP_HALFWORD(x) \
-	(((x) >> 8) | ((x) << 8))
+    (((x) >> 8) | ((x) << 8))
 
 #if NEEDS_SWAP
 #define SWAPIT_WORD(x) SWAP_WORD(x)
@@ -60,19 +60,19 @@
 
 // some memory access macros
 #if __POWERPC__
-#define READ_MEM_WORD(ptr) 		__lwbrx((word *)(ptr), 0)
-#define READ_MEM_HALFWORD(ptr) 	__lhbrx((halfword *)(ptr), 0)
-#define READ_MEM_BYTE(ptr) 		(*(byte *)(ptr))
-#define WRITE_MEM_WORD(ptr, data) 	__stwbrx(data, (word *)(ptr), 0)
-#define WRITE_MEM_HALFWORD(ptr, data)	__sthbrx(data, (halfword *)(ptr), 0)
-#define WRITE_MEM_BYTE(ptr, data) 	(*(byte *)(ptr) = (data))
+#define READ_MEM_WORD(ptr)      __lwbrx((word *)(ptr), 0)
+#define READ_MEM_HALFWORD(ptr)  __lhbrx((halfword *)(ptr), 0)
+#define READ_MEM_BYTE(ptr)      (*(byte *)(ptr))
+#define WRITE_MEM_WORD(ptr, data)   __stwbrx(data, (word *)(ptr), 0)
+#define WRITE_MEM_HALFWORD(ptr, data)   __sthbrx(data, (halfword *)(ptr), 0)
+#define WRITE_MEM_BYTE(ptr, data)   (*(byte *)(ptr) = (data))
 #else
-#define READ_MEM_WORD(ptr) 		SWAPIT_WORD(*(word *)(ptr))
-#define READ_MEM_HALFWORD(ptr) 	SWAPIT_HALFWORD(*(halfword *)(ptr))
-#define READ_MEM_BYTE(ptr) 		(*(byte *)(ptr))
-#define WRITE_MEM_WORD(ptr, data) 	(*(word *)(ptr) = SWAPIT_WORD(data))
-#define WRITE_MEM_HALFWORD(ptr, data)	(*(halfword *)(ptr) = SWAPIT_HALFWORD(data))
-#define WRITE_MEM_BYTE(ptr, data) 	(*(byte *)(ptr) = (data))
+#define READ_MEM_WORD(ptr)      SWAPIT_WORD(*(word *)(ptr))
+#define READ_MEM_HALFWORD(ptr)  SWAPIT_HALFWORD(*(halfword *)(ptr))
+#define READ_MEM_BYTE(ptr)      (*(byte *)(ptr))
+#define WRITE_MEM_WORD(ptr, data)   (*(word *)(ptr) = SWAPIT_WORD(data))
+#define WRITE_MEM_HALFWORD(ptr, data)   (*(halfword *)(ptr) = SWAPIT_HALFWORD(data))
+#define WRITE_MEM_BYTE(ptr, data)   (*(byte *)(ptr) = (data))
 #endif
 
 

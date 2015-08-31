@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -55,10 +55,10 @@ word mmu_get_flags(void);
 
 /* getting and setting internal mmu registers */
 enum mmu_registers {
-	MMU_TRANS_TABLE_REG,
-	MMU_DOMAIN_ACCESS_CONTROL_REG,
-	MMU_FAULT_STATUS_REG,
-	MMU_FAULT_ADDRESS_REG,
+    MMU_TRANS_TABLE_REG,
+    MMU_DOMAIN_ACCESS_CONTROL_REG,
+    MMU_FAULT_STATUS_REG,
+    MMU_FAULT_ADDRESS_REG,
 };
 
 void mmu_set_register(enum mmu_registers reg, word val);

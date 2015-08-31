@@ -14,35 +14,35 @@ static volatile int tail = 0;
 
 static int read_keyboard_hardware(unsigned int *key)
 {
-	if(*REG(KYBD_STAT) == 0)
-		return -1; /* nothing available */
+    if (*REG(KYBD_STAT) == 0)
+        return -1; /* nothing available */
 
-	*key = *(REG(KYBD_DATA));
-	return 0;
+    *key = *(REG(KYBD_DATA));
+    return 0;
 }
 
 void keyboard_int_handler(void)
 {
-	unsigned int key;
+    unsigned int key;
 
-	while(read_keyboard_hardware(&key) >= 0) {
-		// we have something
-		if(!IS_BUF_FULL) {
-			kb_buf[head] = key;
-			head = (head + 1) % KB_BUFSIZE;
-		}
-	}
+    while (read_keyboard_hardware(&key) >= 0) {
+        // we have something
+        if (!IS_BUF_FULL) {
+            kb_buf[head] = key;
+            head = (head + 1) % KB_BUFSIZE;
+        }
+    }
 }
 
 int read_keyboard(unsigned int *key)
 {
-	if(!IS_BUF_EMPTY) {
-		*key = kb_buf[tail];
-		tail = (tail + 1) % KB_BUFSIZE;
-		return 0;
-	}
+    if (!IS_BUF_EMPTY) {
+        *key = kb_buf[tail];
+        tail = (tail + 1) % KB_BUFSIZE;
+        return 0;
+    }
 
-	return -1;
+    return -1;
 }
 
 

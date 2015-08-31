@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -31,8 +31,8 @@ void system_reset(void);
 void system_start(void);
 int system_message_loop(void);
 void install_mem_handler(armaddr_t base, armaddr_t len,
-	word (*get_put)(armaddr_t address, word data, int size, int put),
-	void* (*get_ptr)(armaddr_t address));
+                         word (*get_put)(armaddr_t address, word data, int size, int put),
+                         void* (*get_ptr)(armaddr_t address));
 void dump_sys(void);
 
 /* referenced by the cpu */

@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -40,106 +40,106 @@ static struct termios oldstdout;
 
 static void usage(int argc, char **argv)
 {
-	fprintf(stderr, "usage: %s [-b binary] [-c cpu type] [-r romfile] [-n cycle count]\n", argv[0]);
+    fprintf(stderr, "usage: %s [-b binary] [-c cpu type] [-r romfile] [-n cycle count]\n", argv[0]);
 
-	exit(1);
+    exit(1);
 }
 
 static int init_sdl(void)
 {
-	atexit(SDL_Quit);
+    atexit(SDL_Quit);
 
-	return SDL_Init(SDL_INIT_TIMER);
+    return SDL_Init(SDL_INIT_TIMER);
 }
 
 static void resetconsole(void)
 {
-	tcsetattr(0, TCSANOW, &oldstdin);
-	tcsetattr(1, TCSANOW, &oldstdout);
+    tcsetattr(0, TCSANOW, &oldstdin);
+    tcsetattr(1, TCSANOW, &oldstdout);
 }
 
 static void setconsole(void)
 {
-	struct termios t;
+    struct termios t;
 
-	tcgetattr(0, &oldstdin);
-	tcgetattr(1, &oldstdout);
+    tcgetattr(0, &oldstdin);
+    tcgetattr(1, &oldstdout);
 
-	atexit(&resetconsole);
+    atexit(&resetconsole);
 
-	t = oldstdin;
-	t.c_lflag = ISIG; // no input processing
-	// Don't interpret various control characters, pass them through instead
-	t.c_cc[VINTR] = t.c_cc[VQUIT] = t.c_cc[VSUSP] = '\0';
-	t.c_cc[VMIN]  = 0; // nonblocking read
-	t.c_cc[VTIME] = 0; // nonblocking read
-	tcsetattr(0, TCSANOW, &t);
+    t = oldstdin;
+    t.c_lflag = ISIG; // no input processing
+    // Don't interpret various control characters, pass them through instead
+    t.c_cc[VINTR] = t.c_cc[VQUIT] = t.c_cc[VSUSP] = '\0';
+    t.c_cc[VMIN]  = 0; // nonblocking read
+    t.c_cc[VTIME] = 0; // nonblocking read
+    tcsetattr(0, TCSANOW, &t);
 
-	fcntl(0, F_SETFL, O_NONBLOCK);
+    fcntl(0, F_SETFL, O_NONBLOCK);
 
-	t = oldstdout;
-	t.c_lflag = ISIG; // no output processing
-	// Don't interpret various control characters, pass them through instead
-	t.c_cc[VINTR] = t.c_cc[VQUIT] = t.c_cc[VSUSP] = '\0';
-	tcsetattr(1, TCSANOW, &t);
+    t = oldstdout;
+    t.c_lflag = ISIG; // no output processing
+    // Don't interpret various control characters, pass them through instead
+    t.c_cc[VINTR] = t.c_cc[VQUIT] = t.c_cc[VSUSP] = '\0';
+    tcsetattr(1, TCSANOW, &t);
 }
 
 
 int main(int argc, char **argv)
 {
-	// load the configuration of the emulator from the command line and config file
-	load_config(argc, argv);
+    // load the configuration of the emulator from the command line and config file
+    load_config(argc, argv);
 
-	// read in any overriding configuration from the command line
-	for(;;) {
-		int c;
-		int option_index = 0;
+    // read in any overriding configuration from the command line
+    for (;;) {
+        int c;
+        int option_index = 0;
 
-		static struct option long_options[] = {
-			{"rom", 1, 0, 'r'},
-			{"cpu", 1, 0, 'c'},
-			{0, 0, 0, 0},
-		};
-		
-		c = getopt_long(argc, argv, "r:c:", long_options, &option_index);
-		if(c == -1)
-			break;
+        static struct option long_options[] = {
+            {"rom", 1, 0, 'r'},
+            {"cpu", 1, 0, 'c'},
+            {0, 0, 0, 0},
+        };
 
-		switch(c) {
-			case 'r':
-				printf("load rom option: '%s'\n", optarg);
-				add_config_key("rom", "file", optarg);
-				break;
-			case 'c':
-				printf("cpu core option: '%s'\n", optarg);
-				add_config_key("cpu", "core", optarg);
-				break;
-			default:
-				usage(argc, argv);
-				break;
-		}
-	}
+        c = getopt_long(argc, argv, "r:c:", long_options, &option_index);
+        if (c == -1)
+            break;
 
-	setconsole();
+        switch (c) {
+            case 'r':
+                printf("load rom option: '%s'\n", optarg);
+                add_config_key("rom", "file", optarg);
+                break;
+            case 'c':
+                printf("cpu core option: '%s'\n", optarg);
+                add_config_key("cpu", "core", optarg);
+                break;
+            default:
+                usage(argc, argv);
+                break;
+        }
+    }
 
-	// bring up the SDL system
-	if (init_sdl() < 0) {
-		fprintf(stderr, "error initializing sdl. aborting...\n");
-		return 1;
-	}
+    setconsole();
 
-	// initialize the system
-	if (initialize_system() < 0) {
-		fprintf(stderr, "failed to initialize system, bailing\n");
-		return 1;
-	}
+    // bring up the SDL system
+    if (init_sdl() < 0) {
+        fprintf(stderr, "error initializing sdl. aborting...\n");
+        return 1;
+    }
 
-	// start the system, should spawn a cpu thread
-	system_start();
+    // initialize the system
+    if (initialize_system() < 0) {
+        fprintf(stderr, "failed to initialize system, bailing\n");
+        return 1;
+    }
 
-	// run the SDL message loop
-	system_message_loop();
+    // start the system, should spawn a cpu thread
+    system_start();
 
-	return 0;
+    // run the SDL message loop
+    system_message_loop();
+
+    return 0;
 }
 

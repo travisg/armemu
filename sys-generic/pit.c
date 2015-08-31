@@ -8,10 +8,10 @@
  * publish, distribute, sublicense, and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -34,114 +34,114 @@
 #include "sys_p.h"
 
 static struct pit {
-	SDL_mutex *mutex;
-	SDL_TimerID curr_timer;
+    SDL_mutex *mutex;
+    SDL_TimerID curr_timer;
 
-	reg_t curr_interval;
-	bool periodic;
-	reg_t status;
+    reg_t curr_interval;
+    bool periodic;
+    reg_t status;
 } pit;
 
 static Uint32 pit_callback(Uint32 interval, void *param)
 {
-	SYS_TRACE(5, "pit_callback: interval %d\n", interval);
+    SYS_TRACE(5, "pit_callback: interval %d\n", interval);
 
-	SDL_LockMutex(pit.mutex);
+    SDL_LockMutex(pit.mutex);
 
-	// make sure there is still an active timer
-	if (pit.curr_timer == NULL)
-		goto exit;
+    // make sure there is still an active timer
+    if (pit.curr_timer == NULL)
+        goto exit;
 
-	// level trigger an interrupt
-	pit.status |= PIT_STATUS_INT_PEND;
-	pic_assert_level(INT_PIT);
+    // level trigger an interrupt
+    pit.status |= PIT_STATUS_INT_PEND;
+    pic_assert_level(INT_PIT);
 
-	if (!pit.periodic) {
-		// cancel the timer
-		SDL_RemoveTimer(pit.curr_timer);
-		pit.curr_timer = NULL;
-		pit.status &= ~PIT_STATUS_ACTIVE;
-	}
+    if (!pit.periodic) {
+        // cancel the timer
+        SDL_RemoveTimer(pit.curr_timer);
+        pit.curr_timer = NULL;
+        pit.status &= ~PIT_STATUS_ACTIVE;
+    }
 
-  exit:
-	SDL_UnlockMutex(pit.mutex);
+exit:
+    SDL_UnlockMutex(pit.mutex);
 
-	return interval;
+    return interval;
 }
 
 static word pit_regs_get_put(armaddr_t address, word data, int size, int put)
 {
-	word val = 0;
+    word val = 0;
 
-	SYS_TRACE(5, "sys: pit_regs_get_put at 0x%08x, data 0x%08x, size %d, put %d\n", 
-		address, data, size, put);
+    SYS_TRACE(5, "sys: pit_regs_get_put at 0x%08x, data 0x%08x, size %d, put %d\n",
+              address, data, size, put);
 
-	if(size < 4)
-		return 0; /* only word accesses supported */
+    if (size < 4)
+        return 0; /* only word accesses supported */
 
-	SDL_LockMutex(pit.mutex);
+    SDL_LockMutex(pit.mutex);
 
-	switch(address) {
-	case PIT_STATUS: // status bit
-		val = pit.status;
-		break;
-	case PIT_INTERVAL:
-		if (put && data != 0) {
-			pit.curr_interval = data;
-		}
-		val = pit.curr_interval;
-		break;
-	case PIT_START_ONESHOT:
-		if (put && data != 0) {
-			pit.periodic = FALSE;
-			goto set_timer;
-		}
-		break;
-	case PIT_START_PERIODIC:
-		if (put && data != 0) {
-			pit.periodic = TRUE;
-			goto set_timer;
-		}
-		break;
+    switch (address) {
+        case PIT_STATUS: // status bit
+            val = pit.status;
+            break;
+        case PIT_INTERVAL:
+            if (put && data != 0) {
+                pit.curr_interval = data;
+            }
+            val = pit.curr_interval;
+            break;
+        case PIT_START_ONESHOT:
+            if (put && data != 0) {
+                pit.periodic = FALSE;
+                goto set_timer;
+            }
+            break;
+        case PIT_START_PERIODIC:
+            if (put && data != 0) {
+                pit.periodic = TRUE;
+                goto set_timer;
+            }
+            break;
 
-  set_timer:
-		// clear any old timer
-		if (pit.curr_timer != NULL) {
-			SDL_RemoveTimer(pit.curr_timer);
-			pit.curr_timer = NULL;
-		}
-		pit.curr_timer = SDL_AddTimer(pit.curr_interval, &pit_callback, NULL);
-		pit.status |= PIT_STATUS_ACTIVE;
-		break;
-	case PIT_CLEAR:
-		if (put && data != 0 && pit.curr_timer != NULL) {
-			SDL_RemoveTimer(pit.curr_timer);
-			pit.curr_timer = NULL;
-			pit.status &= ~PIT_STATUS_ACTIVE;
-		}
-		break;
-	case PIT_CLEAR_INT:
-		if (put && data != 0) {
-			pit.status &= ~PIT_STATUS_INT_PEND;
-			pic_deassert_level(INT_PIT);
-		}
-		break;
-	}
+set_timer:
+            // clear any old timer
+            if (pit.curr_timer != NULL) {
+                SDL_RemoveTimer(pit.curr_timer);
+                pit.curr_timer = NULL;
+            }
+            pit.curr_timer = SDL_AddTimer(pit.curr_interval, &pit_callback, NULL);
+            pit.status |= PIT_STATUS_ACTIVE;
+            break;
+        case PIT_CLEAR:
+            if (put && data != 0 && pit.curr_timer != NULL) {
+                SDL_RemoveTimer(pit.curr_timer);
+                pit.curr_timer = NULL;
+                pit.status &= ~PIT_STATUS_ACTIVE;
+            }
+            break;
+        case PIT_CLEAR_INT:
+            if (put && data != 0) {
+                pit.status &= ~PIT_STATUS_INT_PEND;
+                pic_deassert_level(INT_PIT);
+            }
+            break;
+    }
 
-	SDL_UnlockMutex(pit.mutex);
+    SDL_UnlockMutex(pit.mutex);
 
-	return val;
+    return val;
 }
 
 int initialize_pit(void)
 {
-	memset(&pit, 0, sizeof(pit));
+    memset(&pit, 0, sizeof(pit));
 
-	// create a mutex to lock us
-	pit.mutex = SDL_CreateMutex();
+    // create a mutex to lock us
+    pit.mutex = SDL_CreateMutex();
 
-	// install the pic register handlers
-	install_mem_handler(PIT_REGS_BASE, PIT_REGS_SIZE, &pit_regs_get_put, NULL);
+    // install the pic register handlers
+    install_mem_handler(PIT_REGS_BASE, PIT_REGS_SIZE, &pit_regs_get_put, NULL);
 
-	return 0;
+    return 0;
 }
