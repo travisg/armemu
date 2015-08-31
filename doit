@@ -4,6 +4,10 @@ if [ ! -f bdev.bin ]; then
 	dd if=/dev/zero of=bdev.bin bs=1024k count=16
 fi
 
+tagit &&
 make -j2 &&
 make testbin -j2 &&
-sudo ./build-generic/armemu
+./build-generic/armemu
+
+
+#sudo ./build-generic/armemu
