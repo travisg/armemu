@@ -1229,4 +1229,23 @@ void op_extend(struct uop *op)
     CPU_TRACE(5, "\t\top_extend: Rd %d Rm %d Rn %d, S %d, A %d, size %u, rotate %u\n", Rd, Rm, Rn, S ? 1 : 0, A ? 1 : 0, size, rotate);
 }
 
+void op_load_store_exclusive(struct uop *op)
+{
+    word ins = op->undecoded.raw_instruction;
+
+    // only supported on ARMv6+
+    if (get_isa() < ARM_V6) {
+        op_undefined(op);
+        return;
+    }
+
+    // decode the instruction
+    int Rd = BITS_SHIFT(ins, 15, 12);
+    int Rt = BITS_SHIFT(ins, 3, 0);
+    int Rn = BITS_SHIFT(ins, 19, 16);
+
+    CPU_TRACE(5, "\t\top_load_store_exclusive: Rd %d Rt %d Rn %d\n", Rd, Rt, Rn);
+
+    panic_cpu("WAHT");
+}
 

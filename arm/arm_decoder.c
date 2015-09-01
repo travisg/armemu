@@ -36,7 +36,147 @@ static void bad_decode(struct uop *op)
 // opcode[27:25] == 0b000
 static void prim_group_0_decode(struct uop *op)
 {
+    unsigned int op1 = BITS_SHIFT(op->undecoded.raw_instruction, 24, 20);
+    unsigned int op2 = BITS_SHIFT(op->undecoded.raw_instruction, 7, 4);
+
     /* look for special cases (various miscellaneous forms) */
+    /* Table A5-2 */
+    //printf("group 0: op1 0x%x, op2 0x%x\n", op1, op2);
+    if ((op1 & 0b11001) == 0b10000) {
+        if ((op2 & 0b1000) == 0) {
+            /* miscellaneous instructions */
+            unsigned int B = BIT(op->undecoded.raw_instruction, 9);
+            unsigned int _op = BITS_SHIFT(op->undecoded.raw_instruction, 22, 21);
+            op1 = BITS_SHIFT(op->undecoded.raw_instruction, 19, 16);
+            op2 = BITS_SHIFT(op->undecoded.raw_instruction, 6, 4);
+
+            //printf("misc, op 0x%x, op1 0x%x, op2 0x%x, B %u\n", _op, op1, op2, B);
+            switch (op2) {
+                case 0b000:
+                    if (B && (_op & 0b01) == 0b00) {
+                        /* MRS (banked register) */
+                        bad_decode(op);
+                    } else if (B && (_op & 0b01) == 0b01) {
+                        /* MSR (banked register) */
+                        bad_decode(op);
+                    } else if (!B && (_op & 0b01) == 0b00) {
+                        /* MRS register, system */
+                        op_mrs(op);
+                    } else if (!B && _op == 0b01 && (op1 & 0b0011) == 0) {
+                        /* MSR register, application level */
+                        op_msr(op);
+                    } else if (!B && _op == 0b01 && (op1 & 0b0011) == 0b0001) {
+                        /* MSR register, system */
+                        op_msr(op);
+                    } else if (!B && _op == 0b01 && (op1 & 0b0010) == 0b0010) {
+                        /* MSR register, system */
+                        op_msr(op);
+                    } else {
+                        op_undefined(op);
+                    }
+                    break;
+                case 0b001:
+                    if (_op == 0b01)
+                        op_bx(op); // bx
+                    else if (_op == 0b11)
+                        op_clz(op);
+                    else
+                        op_undefined(op);
+                    break;
+                case 0b010:
+                    if (_op == 0b01)
+                        /* BXJ */
+                        bad_decode(op);
+                    else
+                        op_undefined(op);
+                    break;
+                case 0b011:
+                    if (_op == 0b01)
+                        op_bx(op); // blx
+                    else
+                        op_undefined(op);
+                    break;
+                case 0b101:
+                    bad_decode(op); // DSP add/subtracts go here (qadd, qsub, qdadd, qdsub)
+                    break;
+                case 0b110:
+                    if (_op == 0b11)
+                        bad_decode(op); // eret
+                    else
+                        op_undefined(op);
+                    break;
+                case 0b111:
+                    if (_op == 0b01)
+                        op_bkpt(op); // bkpt
+                    else if (_op == 0b10)
+                        bad_decode(op); // hvc
+                    else if (_op == 0b11)
+                        bad_decode(op); // smc
+                    else
+                        op_undefined(op);
+                    break;
+                default:
+                    op_undefined(op);
+            }
+        } else if ((op2 & 0b1001) == 0b1000) {
+            /* halfword multiply and multiply accumulate */
+            bad_decode(op);
+        } else {
+            op_undefined(op);
+        }
+    } else if ((op2 & 0b0001) == 0b0000) {
+        op_data_processing(op); // data processing register
+    } else if ((op2 & 0b1001) == 0b0001) {
+        op_data_processing(op); // data processing register-shifted register
+    } else if ((op1 & 0b10000) == 0b00000 && op2 == 0b1001) {
+        // multiply and multiply accumulate
+        op1 &= 0b1111;
+        if ((op1 & 0b1110) == 0b0000)
+            op_mul(op); // mul
+        else if ((op1 & 0b1110) == 0b0010)
+            op_mul(op); // mla
+        else if (op1 == 0b0100)
+            bad_decode(op); // umaal
+        else if (op1 == 0b0110)
+            bad_decode(op); // mls
+        else if ((op1 & 0b1110) == 0b1000)
+            op_mull(op); // umull
+        else if ((op1 & 0b1110) == 0b1010)
+            op_mull(op); // umlal
+        else if ((op1 & 0b1110) == 0b1100)
+            op_mull(op); // smull
+        else if ((op1 & 0b1110) == 0b1110)
+            op_mull(op); // smlal
+        else
+            op_undefined(op);
+    } else if ((op1 & 0b10000) == 0b10000 && op2 == 0b1001) {
+        /* synchronization primitives */
+        op1 &= 0b1111;
+
+        if ((op1 & 0b1011) == 0)
+            op_swap(op); // swp/swpb
+        else
+            op_load_store_exclusive(op); // ldrex/strex, byte/halfword/word/double variants
+    } else if ((op1 & 0b10011) == 0b00010 && (op2 & 0b1101) == 0b1101) {
+        /* extra load/store instructions */
+        op_misc_load_store(op); // load store halfword/doubleword
+    } else if ((op1 & 0b10010) == 0b00010 && op2 == 0b1011) {
+        /* extra load/store instructions, unpriviledged */
+        bad_decode(op);
+    } else if ((op1 & 0b10011) == 0b00011 && (op2 & 0b1101) == 0b1101) {
+        /* extra load/store instructions, unpriviledged */
+        bad_decode(op);
+    } else if (op2 == 0b1011) {
+        /* extra load/store instructions */
+        op_misc_load_store(op); // load store halfword/doubleword
+    } else if ((op2 & 0b1101) == 0b1101) {
+        /* extra load/store instructions */
+        op_misc_load_store(op); // load store halfword/doubleword
+    } else {
+        op_undefined(op);
+    }
+
+#if 0
     switch (op->undecoded.raw_instruction & ((3<<23)|(1<<20)|(1<<7)|(1<<4))) {
         default:
             op_data_processing(op); // data processing immediate shift and register shift
@@ -45,7 +185,7 @@ static void prim_group_0_decode(struct uop *op)
         case (2<<23):
         case (2<<23)|(1<<4): { // miscellaneous instructions (Figure 3-3, page A3-4).
             // also section 3.13.3, page A3-30 (control instruction extension space)
-            unsigned int op1 = BITS_SHIFT(op->undecoded.raw_instruction, 22, 21);
+            op1 = BITS_SHIFT(op->undecoded.raw_instruction, 22, 21);
 
             // switch based off of bits 7:4
             switch (op->undecoded.raw_instruction & (0x7 << 4)) {
@@ -127,27 +267,30 @@ static void prim_group_0_decode(struct uop *op)
             break;
         }
     }
+#endif
 }
 
 // opcode[27:25] == 0b001
 static void prim_group_1_decode(struct uop *op)
 {
-    /* look for special cases (undefined, move immediate to status reg) */
+    /* look for special cases, most of this group is immediate data processing */
+    /* Table A5-2 */
     switch (BITS_SHIFT(op->undecoded.raw_instruction, 24, 20)) {
-        default:
-            op_data_processing(op);
-            break;
-        case 0x12:
-        case 0x16: // MSR, immediate form
+        case 0b10010:
+        case 0b10110: // MSR, immediate form
             op_msr(op);
             break;
-        case 0x10:
-        case 0x14: // undefined
+        case 0b10000:
+        case 0b10100:
+            // undefined prior to v6t2
             if (get_isa() < ARM_V6) {
                 op_undefined(op);
                 break;
             }
             // movw/movt
+            op_data_processing(op);
+            break;
+        default:
             op_data_processing(op);
             break;
     }
@@ -177,8 +320,6 @@ static void prim_group_3_decode(struct uop *op)
         } else if ((op1 & 0b11000) == 0b01000) {
             // packing, unpacking, saturation, and reversal (table A5-19)
             op1 = BITS_SHIFT(op->undecoded.raw_instruction, 22, 20);
-
-            printf("op1 0x%x, op2 0x%x\n", op1, op2);
 
             switch (op1) {
                 case 0b000:
@@ -342,14 +483,14 @@ void arm_decode_into_uop(struct uop *op)
     word ins = op->undecoded.raw_instruction;
     /* look for the unconditional instruction extension space */
     /* all of these are unpredictable in V4 */
-    if (BITS_SHIFT(ins, 31, 27) == 0x1e) {
+    if (BITS_SHIFT(ins, 31, 27) == 0b11110) {
         /* figure A5-217, ARM DDI 0406C.b */
         uint32_t op1 = BITS_SHIFT(ins, 26, 20);
         uint32_t Rn = BITS_SHIFT(ins, 19, 16);
         uint32_t op2 = BITS_SHIFT(ins, 7, 4);
 
-        if (op1 == 0x10) {
-            if (((op2 & 0x2) == 0) && ((Rn & 0x1) == 0)) {
+        if (op1 == 0b0010000) {
+            if (((op2 & 0b0010) == 0) && ((Rn & 0x1) == 0)) {
                 op_cps(op);
             } else if (op2 == 0 && ((Rn & 0x1) == 1)) {
                 // XXX setend
@@ -357,43 +498,47 @@ void arm_decode_into_uop(struct uop *op)
             } else {
                 op_undefined(op);
             }
-        } else if ((op1 & 0x60) == 0x20) {
+        } else if ((op1 & 0b1100000) == 0b0100000) {
             // XXX Advanced SIMD processing
             bad_decode(op);
-        } else if ((op1 & 0x71) == 0x40) {
+        } else if ((op1 & 0b1110001) == 0b1000000) {
             // XXX Advanced SIMD element or structure load/store instructions
             bad_decode(op);
-        } else if ((op1 & 0x77) == 0x45) {
+        } else if ((op1 & 0b1110111) == 0b1000001) {
+            op_nop(op); // unallocated memory hint (nop)
+        } else if ((op1 & 0b1110111) == 0b1000101) {
             op_pld(op); // v7 immediate pld
-        } else if ((op1 & 0x77) == 0x55) {
-            op_pld(op); // v5 pld
-        } else if ((op1 & 0x77) == 0x51) {
+        } else if ((op1 & 0b1110111) == 0b1010001) {
             op_pld(op); // mp ext pld
-        } else if (op1 == 0x57) {
+        } else if ((op1 & 0b1110111) == 0b1010101) {
+            op_pld(op); // v5 pld
+        } else if (op1 == 0b1010111) {
             switch (op2) {
-                case 0x1: // CLREX
+                case 0b0001: // CLREX
                     bad_decode(op);
                     break;
-                case 0x4: // DSB
+                case 0b0100: // DSB
                     op_nop(op);
                     break;
-                case 0x5: // DMB
+                case 0b0101: // DMB
                     op_nop(op);
                     break;
-                case 0x6: // ISB
+                case 0b0110: // ISB
                     op_nop(op);
                     break;
                 default:
                     op_undefined(op);
                     break;
             }
-        } else if ((op1 & 0x77) == 0x61 && ((op2 & 1) == 0)) {
+        } else if ((op1 & 0b1111011) == 0b1011011) {
+            op_nop(op); // unallocated memory hint (nop)
+        } else if ((op1 & 0b1110111) == 0b1100101 && ((op2 & 1) == 0)) {
             op_pld(op); // pli
-        } else if ((op1 & 0x77) == 0x71 && ((op2 & 1) == 0)) {
+        } else if ((op1 & 0b1110111) == 0b1100001 && ((op2 & 1) == 0)) {
             op_pld(op); // preload with intent to write
-        } else if ((op1 & 0x77) == 0x75 && ((op2 & 1) == 0)) {
+        } else if ((op1 & 0b1110111) == 0b1110101 && ((op2 & 1) == 0)) {
             op_pld(op); // v5 pld
-        } else if (op1 == 0x7f && (op2 == 0xf)) {
+        } else if (op1 == 0b1111111 && op2 == 0b1111) {
             op_undefined(op); // permanently undefined
         } else {
             op_undefined(op);

@@ -136,7 +136,7 @@ static void op_cp15_reg_transfer(word ins, void *data)
                         goto done;
                     case 5: // various forms of ICache invalidation
                     case 7: // invalidate Icache + Dcache
-                        flush_all_codepages();
+                        //flush_all_codepages();
                         goto done;
                     case 6: // invalidate dcache
                         goto done;

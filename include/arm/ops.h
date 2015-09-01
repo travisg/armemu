@@ -53,6 +53,7 @@ void op_no_coproc_installed(struct uop *op, int cp_num);
 void op_cps(struct uop *op);
 void op_bfx(struct uop *op);
 void op_extend(struct uop *op);
+void op_load_store_exclusive(struct uop *op);
 
 /* data processing opcode to string */
 const char *dp_op_to_str(int op);
