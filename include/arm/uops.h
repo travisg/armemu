@@ -261,7 +261,8 @@ struct uop {
         // multiply
 #define UOPMULFLAGS_S_BIT                   0x1 // set NZ condition
 #define UOPMULFLAGS_ACCUMULATE              0x2 // add the contents of the accum reg to the product
-#define UOPMULFLAGS_SIGNED                  0x4 // signed long multiply (only defined on long multiples)
+#define UOPMULFLAGS_SUBTRACT                0x4 // subtract the contents of the accum reg to the product
+#define UOPMULFLAGS_SIGNED                  0x8 // signed long multiply (only defined on long multiples)
         struct {
             byte dest_reg;
             byte source_reg;

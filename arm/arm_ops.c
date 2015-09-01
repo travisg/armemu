@@ -735,9 +735,10 @@ void op_mul(struct uop *op)
     Rd = BITS_SHIFT(ins, 19, 16);
 #define S BIT(ins, 20)
 #define A BIT(ins, 21)
+#define SUB BIT(ins, 22)
 
-    CPU_TRACE(5, "\t\tmul: A %d, S %d, Rd %d, Rn %d, Rs %d, Rm %d\n",
-              A?1:0, S?1:0, Rd, Rn, Rs, Rm);
+    CPU_TRACE(5, "\t\tmul: A %d, SUB %d, S %d, Rd %d, Rn %d, Rs %d, Rm %d\n",
+              A?1:0, SUB?1:0, S?1:0, Rd, Rn, Rs, Rm);
 
     // translate the instruction
     op->opcode = MULTIPLY;
@@ -748,8 +749,13 @@ void op_mul(struct uop *op)
     op->mul.accum_reg = Rn;
     if (S)
         op->flags |= UOPMULFLAGS_S_BIT;
-    if (A)
-        op->flags |= UOPMULFLAGS_ACCUMULATE;
+    if (A) {
+        if (SUB)
+            op->flags |= UOPMULFLAGS_SUBTRACT;
+        else
+            op->flags |= UOPMULFLAGS_ACCUMULATE;
+    }
+#undef SUB
 #undef S
 #undef A
 }

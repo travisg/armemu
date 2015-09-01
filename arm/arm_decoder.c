@@ -138,7 +138,7 @@ static void prim_group_0_decode(struct uop *op)
         else if (op1 == 0b0100)
             bad_decode(op); // umaal
         else if (op1 == 0b0110)
-            bad_decode(op); // mls
+            op_mul(op); // mls
         else if ((op1 & 0b1110) == 0b1000)
             op_mull(op); // umull
         else if ((op1 & 0b1110) == 0b1010)

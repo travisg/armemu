@@ -2617,8 +2617,10 @@ static inline __ALWAYS_INLINE void uop_multiply(struct uop *op)
     word temp_word = get_reg(op->mul.source_reg);
     word temp_word2 = get_reg(op->mul.source2_reg) * temp_word;
 
-    // add a third one conditionally
-    if (op->flags & UOPMULFLAGS_ACCUMULATE)
+    // add or subtract a third one conditionally
+    if (op->flags & UOPMULFLAGS_SUBTRACT)
+        temp_word2 = get_reg(op->mul.accum_reg) - temp_word2;
+    else if (op->flags & UOPMULFLAGS_ACCUMULATE)
         temp_word2 += get_reg(op->mul.accum_reg);
 
     // store the result
