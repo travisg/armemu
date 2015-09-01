@@ -1240,12 +1240,39 @@ void op_load_store_exclusive(struct uop *op)
     }
 
     // decode the instruction
-    int Rd = BITS_SHIFT(ins, 15, 12);
-    int Rt = BITS_SHIFT(ins, 3, 0);
-    int Rn = BITS_SHIFT(ins, 19, 16);
+#define L BIT(ins, 20)
+    int width = BITS_SHIFT(ins, 22, 21);
 
-    CPU_TRACE(5, "\t\top_load_store_exclusive: Rd %d Rt %d Rn %d\n", Rd, Rt, Rn);
+    // shared parts
+    op->cond = (ins >> COND_SHIFT) & COND_MASK;
+    op->flags = (width == 0b00) ? UOPLSFLAGS_SIZE_WORD :
+                (width == 0b01) ? UOPLSFLAGS_SIZE_DWORD :
+                (width == 0b10) ? UOPLSFLAGS_SIZE_BYTE :
+                UOPLSFLAGS_SIZE_HALFWORD;
 
-    panic_cpu("WAHT");
+    if (L) {
+        op->opcode = LOAD_EXCLUSIVE;
+
+        int Rt = BITS_SHIFT(ins, 15, 12);
+        int Rn = BITS_SHIFT(ins, 19, 16);
+
+        op->load_store_exclusive.offset = 0; // no offset field in ARM
+        op->load_store_exclusive.target_reg = Rt;
+        op->load_store_exclusive.target2_reg = 0;
+        op->load_store_exclusive.source_reg = Rn;
+        CPU_TRACE(5, "\t\top_load_store_exclusive: load Rt %d Rn %d width %d\n", Rt, Rn, width);
+    } else {
+        op->opcode = STORE_EXCLUSIVE;
+
+        int Rd = BITS_SHIFT(ins, 15, 12);
+        int Rt = BITS_SHIFT(ins, 3, 0);
+        int Rn = BITS_SHIFT(ins, 19, 16);
+
+        op->load_store_exclusive.offset = 0; // no offset field in ARM
+        op->load_store_exclusive.target_reg = Rt;
+        op->load_store_exclusive.target2_reg = Rd;
+        op->load_store_exclusive.source_reg = Rn;
+        CPU_TRACE(5, "\t\top_load_store_exclusive: store Rd %d Rt %d Rn %d width %d\n", Rd, Rt, Rn, width);
+    }
 }
 

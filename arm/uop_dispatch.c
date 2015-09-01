@@ -177,6 +177,8 @@ const char *uop_opcode_to_str(int opcode)
             OP_TO_STR(LOAD_MULTIPLE_S);
             OP_TO_STR(STORE_MULTIPLE);
             OP_TO_STR(STORE_MULTIPLE_S);
+            OP_TO_STR(LOAD_EXCLUSIVE);
+            OP_TO_STR(STORE_EXCLUSIVE);
             OP_TO_STR(DATA_PROCESSING_IMM);
             OP_TO_STR(DATA_PROCESSING_IMM_S);
             OP_TO_STR(DATA_PROCESSING_REG);
@@ -1332,6 +1334,115 @@ static inline __ALWAYS_INLINE void uop_store_multiple_s(struct uop *op)
         add_to_perf_counter(CYCLE_COUNT, (op->load_store_multiple.reg_count > 1) ? (op->load_store_multiple.reg_count - 1) : 1);
     }
 #endif
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_STORE);
+#endif
+}
+
+static inline __ALWAYS_INLINE void uop_load_exclusive(struct uop *op)
+{
+    word temp_addr = get_reg(op->load_store_exclusive.source_reg);
+
+    temp_addr += op->load_store_exclusive.offset;
+
+    word temp_word;
+
+    // now we have an address, do the load
+    // read in the different sizes & zero extend
+    // store the result
+    switch (op->flags & UOPLSFLAGS_SIZE_MASK) {
+        case UOPLSFLAGS_SIZE_WORD:
+            if (mmu_read_mem_word(temp_addr, &temp_word))
+                return;
+            put_reg(op->load_store_scaled_reg_offset.target_reg, temp_word);
+            break;
+        case UOPLSFLAGS_SIZE_HALFWORD: {
+            halfword temp_halfword;
+
+            if (mmu_read_mem_halfword(temp_addr, &temp_halfword))
+                return;
+            temp_word = temp_halfword;
+            put_reg(op->load_store_scaled_reg_offset.target_reg, temp_word);
+            break;
+        }
+        case UOPLSFLAGS_SIZE_BYTE: {
+            byte temp_byte;
+
+            if (mmu_read_mem_byte(temp_addr, &temp_byte))
+                return;
+            temp_word = temp_byte;
+            put_reg(op->load_store_scaled_reg_offset.target_reg, temp_word);
+            break;
+        }
+        case UOPLSFLAGS_SIZE_DWORD: {
+            ASSERT((op->load_store_exclusive.target_reg & 1) == 0);
+            ASSERT(op->load_store_exclusive.target_reg != 14);
+
+            // XXX check for doubleword alignment
+
+            // handle the first word
+            if (mmu_read_mem_word(temp_addr, &temp_word))
+                return;
+
+            // read the second word
+            word temp_word2;
+
+            if (mmu_read_mem_word(temp_addr + 4, &temp_word2))
+                return;
+
+            put_reg(op->load_store_exclusive.target_reg, temp_word);
+            put_reg(op->load_store_exclusive.target_reg + 1, temp_word2);
+            break;
+        }
+    }
+
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_LOAD);
+#endif
+}
+
+static inline __ALWAYS_INLINE void uop_store_exclusive(struct uop *op)
+{
+    word temp_addr = get_reg(op->load_store_exclusive.source_reg);
+
+    temp_addr += op->load_store_exclusive.offset;
+
+    word temp_word = get_reg(op->load_store_exclusive.target_reg);
+
+    // now we have an address, do the store
+    // write out the different sizes
+    switch (op->flags & UOPLSFLAGS_SIZE_MASK) {
+        case UOPLSFLAGS_SIZE_WORD:
+            if (mmu_write_mem_word(temp_addr, temp_word))
+                return;
+            break;
+        case UOPLSFLAGS_SIZE_HALFWORD:
+            if (mmu_write_mem_halfword(temp_addr, temp_word))
+                return;
+            break;
+        case UOPLSFLAGS_SIZE_BYTE:
+            if (mmu_write_mem_byte(temp_addr, temp_word))
+                return;
+            break;
+        case UOPLSFLAGS_SIZE_DWORD:
+            ASSERT((op->load_store_exclusive.target_reg & 1) == 0);
+            ASSERT(op->load_store_exclusive.target_reg != 14);
+
+            // handle the first word
+            if (mmu_write_mem_word(temp_addr, temp_word))
+                return;
+
+            // read the second word
+            temp_word = get_reg(op->load_store_exclusive.target_reg + 1);
+
+            if (mmu_write_mem_word(temp_addr + 4, temp_word))
+                return;
+            break;
+    }
+
+    // XXX for now always succeed
+    put_reg(op->load_store_exclusive.target2_reg, 0);
+
 #if COUNT_ARM_OPS
     inc_perf_counter(OP_STORE);
 #endif
@@ -3108,6 +3219,12 @@ int uop_dispatch_loop(void)
                 break;
             case STORE_MULTIPLE_S:      // multiple store with S bit
                 uop_store_multiple_s(op);
+                break;
+            case LOAD_EXCLUSIVE:
+                uop_load_exclusive(op);
+                break;
+            case STORE_EXCLUSIVE:
+                uop_store_exclusive(op);
                 break;
             case DATA_PROCESSING_IMM:       // plain instruction, no barrel shifter, no condition flag update, immediate operand
                 uop_data_processing_imm(op);

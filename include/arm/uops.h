@@ -45,6 +45,9 @@ enum uop_opcode {
     STORE_MULTIPLE,             // simple multiple store, no S bit
     STORE_MULTIPLE_S,
 
+    LOAD_EXCLUSIVE,             // load exclusive, all word sizes
+    STORE_EXCLUSIVE,            // store exclusive, all word sizes
+
     // data processing, ARM style
     DATA_PROCESSING_IMM,        // plain instruction, no barrel shifter, no condition flag update, immediate operand
     DATA_PROCESSING_REG,        // plain instruction, no barrel shifter, no condition flag update, register operand
@@ -189,6 +192,14 @@ struct uop {
             byte shift_op; // LSL, LSR, ASR, ROR
         } load_store_scaled_reg_offset;
 
+        // load/store exclusive
+        struct {
+            word offset;
+            byte target_reg;
+            byte target2_reg;                   // for store, reg that gets the update
+            byte source_reg;
+        } load_store_exclusive;
+
         // load/store multiple
 #define UOPLSMFLAGS_WRITEBACK               0x1 // update the base reg with the writeback address
 #define UOPLSMFLAGS_LOAD_CPSR               0x2 // in one form of load multiple, if the S bit is set and the PC is in the list, do a normal load + load cpsr from spsr
@@ -295,8 +306,8 @@ struct uop {
             byte dest_reg;
             byte source_reg;
             byte add_reg;
-            word size;
-            word rotate;                    // 0, 8, 16, 24 rotate
+            byte size;
+            byte rotate;                    // 0, 8, 16, 24 rotate
         } extend;
 
         // move from/to status register
