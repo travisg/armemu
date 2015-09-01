@@ -73,6 +73,20 @@ __attribute__((naked)) void armasm(void)
         "movw	r2, #0x5678;"
         "movt	r2, #0x1234;"
 
+        /* extend instructions */
+        "uxtb   r2, r3, ROR #8;"
+        "uxth   r2, r3, ROR #16;"
+        "uxtb16 r2, r3, ROR #24;"
+        "uxtab   r2, r1, r3, ROR #8;"
+        "uxtah   r2, r1, r3, ROR #16;"
+        "uxtab16 r2, r1, r3, ROR #24;"
+        "sxtb   r2, r3;"
+        "sxth   r2, r3;"
+        "sxtb16 r2, r3;"
+        "sxtab   r2, r1, r3;"
+        "sxtah   r2, r1, r3;"
+        "sxtab16 r2, r1, r3;"
+
         "bx	lr;"
     );
 }

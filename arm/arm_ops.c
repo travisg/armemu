@@ -1196,3 +1196,37 @@ void op_bfx(struct uop *op)
     CPU_TRACE(5, "\t\top_bfx: Rd %d Rn %d, S %d, width %d, lsb %d, signpos %d\n", Rd, Rn, S ? 1 : 0, width, lsb, op->bfx.signpos);
 }
 
+void op_extend(struct uop *op)
+{
+    word ins = op->undecoded.raw_instruction;
+
+    // only supported on ARMv6+
+    if (get_isa() < ARM_V6) {
+        op_undefined(op);
+        return;
+    }
+
+    // decode the instruction
+    int S = !BIT(ins, 22);
+    int Rd = BITS_SHIFT(ins, 15, 12);
+    int Rm = BITS_SHIFT(ins, 3, 0);
+    int Rn = BITS_SHIFT(ins, 19, 16);
+    word size = BITS_SHIFT(ins, 21, 20); // byte, half, byte 16-bit
+    word rotate = BITS_SHIFT(ins, 11, 10); // 0, 8, 16, 24 bits
+    int A = (Rn != 15) ? UOPEXTEND_A_BIT : 0;
+
+    // translate
+    op->opcode = EXTEND;
+    op->cond = (ins >> COND_SHIFT) & COND_MASK;
+    op->flags = S ? UOPEXTEND_S_BIT : 0;
+    op->flags |= A ? UOPEXTEND_A_BIT : 0;
+    op->extend.dest_reg = Rd;
+    op->extend.source_reg = Rm;
+    op->extend.add_reg = Rn;
+    op->extend.size = size;
+    op->extend.rotate = rotate;
+
+    CPU_TRACE(5, "\t\top_extend: Rd %d Rm %d Rn %d, S %d, A %d, size %u, rotate %u\n", Rd, Rm, Rn, S ? 1 : 0, A ? 1 : 0, size, rotate);
+}
+
+

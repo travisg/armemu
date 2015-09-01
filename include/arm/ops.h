@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 Travis Geiselbrecht
+ * Copyright (c) 2005, 2015 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -52,6 +52,7 @@ void op_no_coproc_installed(struct uop *op, int cp_num);
 /* v6+ stuff */
 void op_cps(struct uop *op);
 void op_bfx(struct uop *op);
+void op_extend(struct uop *op);
 
 /* data processing opcode to string */
 const char *dp_op_to_str(int op);

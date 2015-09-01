@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2012 Travis Geiselbrecht
+ * Copyright (c) 2005-2015 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -168,9 +168,118 @@ static void prim_group_3_decode(struct uop *op)
         word op1 = BITS_SHIFT(op->undecoded.raw_instruction, 24, 20);
         word op2 = BITS_SHIFT(op->undecoded.raw_instruction, 7, 5);
 
-        if ((op1 & 0x1a) == 0x1a && ((op2 & 0x3) == 0x2)) {
+        if ((op1 & 0b11100) == 0) {
+            // parallel addition and subtraction, signed
+            bad_decode(op);
+        } else if ((op1 & 0b11100) == 0b00100) {
+            // parallel addition and subtraction, unsigned
+            bad_decode(op);
+        } else if ((op1 & 0b11000) == 0b01000) {
+            // packing, unpacking, saturation, and reversal (table A5-19)
+            op1 = BITS_SHIFT(op->undecoded.raw_instruction, 22, 20);
+
+            printf("op1 0x%x, op2 0x%x\n", op1, op2);
+
+            switch (op1) {
+                case 0b000:
+                    if ((op2 & 0b001) == 0) {
+                        // pack halfword (PKH)
+                        bad_decode(op);
+                    } else if (op2 == 0b011) {
+                        // signed extend byte 16-bit (SXTB16 and SXTAB16)
+                        op_extend(op);
+                    } else if (op2 == 0b101) {
+                        // select bytes (SEL)
+                        bad_decode(op);
+                    } else {
+                        op_undefined(op);
+                    }
+                    break;
+                case 0b010:
+                    if (op2 == 0b001) {
+                        // signed saturate, two 16-bit (SSAT16)
+                        bad_decode(op);
+                    } else if (op2 == 0b011) {
+                        // signed extend byte (SXTB and SXTAB)
+                        op_extend(op);
+                    } else if ((op2 & 0b001) == 0) {
+                        // signed saturate (SSAT)
+                        bad_decode(op);
+                    } else {
+                        op_undefined(op);
+                    }
+                    break;
+                case 0b011:
+                    if (op2 == 0b001) {
+                        // byte reverse word (REV)
+                        bad_decode(op);
+                    } else if (op2 == 0b011) {
+                        // signed extend halfword (SXTH and SXTAH)
+                        op_extend(op);
+                    } else if (op2 == 0b101) {
+                        // byte-reverse packed halfword (REV16)
+                        bad_decode(op);
+                    } else if ((op2 & 0b001) == 0) {
+                        // signed saturate (SSAT)
+                        bad_decode(op);
+                    } else {
+                        op_undefined(op);
+                    }
+                    break;
+                case 0b100:
+                    if (op2 == 0b011) {
+                        // unsigned extend byte 16-bit (UXTB16 and UXTAB16)
+                        op_extend(op);
+                    } else {
+                        op_undefined(op);
+                    }
+                    break;
+                case 0b110:
+                    if (op2 == 0b001) {
+                        // unsigned saturate, two 16-bit (USAT16)
+                        bad_decode(op);
+                    } else if (op2 == 0b011) {
+                        // unsigned extend byte (UXTB and UXTAB)
+                        op_extend(op);
+                    } else if ((op2 & 0b001) == 0) {
+                        // unsigned saturate (USAT)
+                        bad_decode(op);
+                    } else {
+                        op_undefined(op);
+                    }
+                    break;
+                case 0b111:
+                    if (op2 == 0b001) {
+                        // reverse bits (RBIT)
+                        bad_decode(op);
+                    } else if (op2 == 0b011) {
+                        // unsigned extend halfword (UXTH and UXTAH)
+                        op_extend(op);
+                    } else if (op2 == 0b101) {
+                        // byte-reverse signed halfword (REVSH)
+                        bad_decode(op);
+                    } else if ((op2 & 0b001) == 0) {
+                        // signed saturate (USAT)
+                        bad_decode(op);
+                    } else {
+                        op_undefined(op);
+                    }
+                    break;
+                default:
+                    op_undefined(op);
+            }
+        } else if ((op1 & 0b11000) == 0b10000) {
+            // signed multiply, signed and unsigned divide
+            bad_decode(op);
+        } else if (op1 == 0b11000 && op2 == 0) {
+            // usad8 or usada8
+            bad_decode(op);
+        } else if ((op1 & 0b11010) == 0b11010 && ((op2 & 0b011) == 0b010)) {
             op_bfx(op); // sbfx/ubfx
-        } else if ((op1 & 0x1f) == 0x1f && ((op2 & 0x7) == 0x7)) {
+        } else if ((op1 & 0b11110) == 0b11100 && ((op2 & 0b011) == 0b000)) {
+            // bfc/bfi
+            bad_decode(op);
+        } else if (op1 == 0b1111 && op2 == 0b111) {
             op_undefined(op); // permanently undefined
         } else {
             // unhandled stuff

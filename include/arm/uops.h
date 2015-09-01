@@ -107,6 +107,9 @@ enum uop_opcode {
     // bit field extract
     BFX,
 
+    // extend
+    EXTEND,
+
     // move from/to status register
     MOVE_TO_SR_IMM,
     MOVE_TO_SR_REG,
@@ -281,6 +284,20 @@ struct uop {
             byte signpos;
             word mask;
         } bfx;
+
+        // extend (UXT*, SXT*)
+#define UOPEXTEND_S_BIT                     0x1 // signed
+#define UOPEXTEND_A_BIT                     0x2 // add
+#define UOPEXTEND_SIZE_BYTE_16              0x0
+#define UOPEXTEND_SIZE_BYTE                 0x2
+#define UOPEXTEND_SIZE_HALFWORD             0x3
+        struct {
+            byte dest_reg;
+            byte source_reg;
+            byte add_reg;
+            word size;
+            word rotate;                    // 0, 8, 16, 24 rotate
+        } extend;
 
         // move from/to status register
 #define UOPMSR_R_BIT                        0x1 // access to spsr instead of cpsr

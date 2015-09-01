@@ -224,6 +224,7 @@ const char *uop_opcode_to_str(int opcode)
             OP_TO_STR(MULTIPLY_LONG);
             OP_TO_STR(COUNT_LEADING_ZEROS);
             OP_TO_STR(BFX);
+            OP_TO_STR(EXTEND);
             OP_TO_STR(MOVE_TO_SR_IMM);
             OP_TO_STR(MOVE_TO_SR_REG);
             OP_TO_STR(MOVE_FROM_SR);
@@ -2688,6 +2689,60 @@ static inline __ALWAYS_INLINE void uop_bfx(struct uop *op)
 #endif
 }
 
+static inline __ALWAYS_INLINE void uop_extend(struct uop *op)
+{
+    word val;
+
+    ASSERT_VALID_REG(op->extend.source_reg);
+    ASSERT_VALID_REG(op->extend.dest_reg);
+    ASSERT_VALID_REG(op->extend.add_reg);
+
+    // get the value we're working with
+    val = get_reg(op->extend.source_reg);
+
+    // rotate it
+    val = ROR(val, (op->extend.rotate * 8));
+
+    // based on the size, extract and extend
+    switch (op->extend.size) {
+        case UOPEXTEND_SIZE_BYTE_16: {
+            word val1 = val & 0xff;
+            word val2 = (val >> 16) & 0xff;
+            if (op->flags & UOPEXTEND_S_BIT) {
+                val1 = SIGN_EXTEND(val1, 8);
+                val2 = SIGN_EXTEND(val2, 8);
+            }
+            val = ((val2 << 16) & 0xffff) | (val1 & 0xffff);
+            break;
+        }
+        case UOPEXTEND_SIZE_BYTE:
+            val &= 0xff;
+            if (op->flags & UOPEXTEND_S_BIT) {
+                val = SIGN_EXTEND(val, 8);
+            }
+            break;
+        case UOPEXTEND_SIZE_HALFWORD:
+            val &= 0xffff;
+            if (op->flags & UOPEXTEND_S_BIT) {
+                val = SIGN_EXTEND(val, 16);
+            }
+            break;
+    }
+
+    // if an 'a' variant of the instruction, add the result to another register
+    if (op->flags & UOPEXTEND_A_BIT) {
+        word addval = get_reg(op->extend.add_reg);
+        val += addval;
+    }
+
+    // put the result back
+    put_reg(op->extend.dest_reg, val);
+
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_MISC);
+#endif
+}
+
 static inline __ALWAYS_INLINE void uop_move_to_sr_imm(struct uop *op)
 {
     reg_t old_psr, new_psr;
@@ -3197,6 +3252,9 @@ int uop_dispatch_loop(void)
                 break;
             case BFX:
                 uop_bfx(op);
+                break;
+            case EXTEND:
+                uop_extend(op);
                 break;
             case MOVE_TO_SR_IMM:
                 uop_move_to_sr_imm(op);
