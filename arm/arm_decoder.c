@@ -515,7 +515,7 @@ void arm_decode_into_uop(struct uop *op)
         } else if (op1 == 0b1010111) {
             switch (op2) {
                 case 0b0001: // CLREX
-                    bad_decode(op);
+                    op_nop(op); // op_clrex(op);
                     break;
                 case 0b0100: // DSB
                     op_nop(op);

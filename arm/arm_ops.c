@@ -334,10 +334,10 @@ void op_cps(struct uop *op)
 
     op->flags |= M ? UOPCPS_SETMODE : 0;
 
-    if (imod == 0x2) {
+    if (imod == 0x3) { // ID
         // bits to be set in the AIF fields in the CPSR
         op->cps.aif_set = A | I | F;
-    } else if (imod == 0x3) {
+    } else if (imod == 0x2) { // IE
         // bits to be cleared in the AIF fields in the CPSR
         op->cps.aif_clear = A | I | F;
     }
