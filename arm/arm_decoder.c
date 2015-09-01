@@ -543,18 +543,16 @@ void arm_decode_into_uop(struct uop *op)
         } else {
             op_undefined(op);
         }
-    } else if (BITS_SHIFT(op->undecoded.raw_instruction, 31, 28) == 0xf) {
+    } else if (BITS_SHIFT(op->undecoded.raw_instruction, 31, 28) == 0b1111) {
         /* figure A5-216, ARM DDI 0406C.b */
         uint32_t op1 = BITS_SHIFT(ins, 27, 20);
         //uint32_t op2 = BIT_SHIFT(ins, 4);
 
-        if ((op1 & 0xe5) == 0x84) {
-            // SRS
-            bad_decode(op);
-        } else if ((op1 & 0xe5) == 0x81) {
-            // RFE
-            bad_decode(op);
-        } else if ((op1 & 0xe0) == 0xa0) {
+        if ((op1 & 0b11100101) == 0b10000100) {
+            op_srs(op); // SRS
+        } else if ((op1 & 0b11100101) == 0b10000001) {
+            op_rfe(op); // RFE
+        } else if ((op1 & 0b11100000) == 0b10100000) {
             op_branch(op); // blx (address form)
         } else if ((op1 & 0xe0) == 0xc0) {
             // XXX stc2/ldc2

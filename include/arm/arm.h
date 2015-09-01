@@ -360,6 +360,11 @@ static inline bool arm_in_priviledged(void)
     return ((cpu.cpsr & PSR_MODE_MASK) != PSR_MODE_user);
 }
 
+static inline word arm_current_mode(void)
+{
+    return (cpu.cpsr & PSR_MODE_MASK);
+}
+
 static inline enum arm_instruction_set get_isa(void)
 {
     return cpu.isa;

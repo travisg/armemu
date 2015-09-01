@@ -1274,5 +1274,88 @@ void op_load_store_exclusive(struct uop *op)
         op->load_store_exclusive.source_reg = Rn;
         CPU_TRACE(5, "\t\top_load_store_exclusive: store Rd %d Rt %d Rn %d width %d\n", Rd, Rt, Rn, width);
     }
+#undef L
+}
+
+void op_srs(struct uop *op)
+{
+    word ins = op->undecoded.raw_instruction;
+
+    if (get_isa() < ARM_V6) {
+        op_undefined(op);
+        return;
+    }
+
+    int mode = BITS(ins, 4, 0);
+#define P BIT(ins, 24)
+#define U BIT(ins, 23)
+#define W BIT(ins, 21)
+
+    CPU_TRACE(5, "srs mode 0x%x P %d U %d W %d\n",
+              mode, P ? 1 : 0, U ? 1 : 0, W ? 1 : 0);
+
+    op->opcode = SRS;
+    op->flags = 0;
+    op->cond = COND_AL;
+    op->srs_rfe.mode = mode;
+
+    if (!P && !U) { // DA
+        op->srs_rfe.base_offset = -4;
+        op->srs_rfe.writeback_offset = W ? -8 : 0;
+    } else if (P && !U) { // DB
+        op->srs_rfe.base_offset = -8;
+        op->srs_rfe.writeback_offset = W ? -8 : 0;
+    } else if (!P && U) { // IA
+        op->srs_rfe.base_offset = 0;
+        op->srs_rfe.writeback_offset = W ? 8 : 0;
+    } else { // IB
+        op->srs_rfe.base_offset = 4;
+        op->srs_rfe.writeback_offset = W ? 8 : 0;
+    }
+
+#undef W
+#undef U
+#undef P
+}
+
+void op_rfe(struct uop *op)
+{
+    word ins = op->undecoded.raw_instruction;
+
+    if (get_isa() < ARM_V6) {
+        op_undefined(op);
+        return;
+    }
+
+    int Rn = BITS_SHIFT(ins, 19, 16);
+#define P BIT(ins, 24)
+#define U BIT(ins, 23)
+#define W BIT(ins, 21)
+
+    CPU_TRACE(5, "rfe Rn %d P %d U %d W %d\n",
+              Rn, P ? 1 : 0, U ? 1 : 0, W ? 1 : 0);
+
+    op->opcode = RFE;
+    op->flags = 0;
+    op->cond = COND_AL;
+    op->srs_rfe.base_reg = Rn;
+
+    if (!P && !U) { // DA
+        op->srs_rfe.base_offset = -4;
+        op->srs_rfe.writeback_offset = W ? -8 : 0;
+    } else if (P && !U) { // DB
+        op->srs_rfe.base_offset = -8;
+        op->srs_rfe.writeback_offset = W ? -8 : 0;
+    } else if (!P && U) { // IA
+        op->srs_rfe.base_offset = 0;
+        op->srs_rfe.writeback_offset = W ? 8 : 0;
+    } else { // IB
+        op->srs_rfe.base_offset = 4;
+        op->srs_rfe.writeback_offset = W ? 8 : 0;
+    }
+
+#undef W
+#undef U
+#undef P
 }
 

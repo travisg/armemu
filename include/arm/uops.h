@@ -119,6 +119,8 @@ enum uop_opcode {
     MOVE_FROM_SR,
 
     CPS,
+    SRS,
+    RFE,
 
     // various exceptions
     UNDEFINED,
@@ -331,6 +333,14 @@ struct uop {
             word aif_clear;
             word mode;
         } cps;
+
+        // save return state
+        struct {
+            int16_t  base_offset;       // add to base reg to get starting address (may be negative)
+            int16_t  writeback_offset;  // add to base reg to get writeback address (may be negative)
+            byte     mode;              // only used in srs
+            byte     base_reg;          // only used in rfe
+        } srs_rfe;
 
         // coprocessor instructions
         struct {

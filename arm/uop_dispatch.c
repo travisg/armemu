@@ -32,6 +32,8 @@
 
 #define ASSERT_VALID_REG(x) ASSERT((x) < 16);
 
+static void uop_undefined(struct uop *op);
+
 #define DATA_PROCESSING_OP_TABLE(opcode, result, a, b, arith_op, Rd_writeback, carry, ovl) \
     switch(opcode) { \
         case AOP_AND: /* AND */ \
@@ -231,6 +233,8 @@ const char *uop_opcode_to_str(int opcode)
             OP_TO_STR(MOVE_TO_SR_REG);
             OP_TO_STR(MOVE_FROM_SR);
             OP_TO_STR(CPS);
+            OP_TO_STR(SRS);
+            OP_TO_STR(RFE);
             OP_TO_STR(UNDEFINED);
             OP_TO_STR(SWI);
             OP_TO_STR(BKPT);
@@ -2977,6 +2981,100 @@ static inline __ALWAYS_INLINE void uop_cps(struct uop *op)
 #endif
 }
 
+static inline __ALWAYS_INLINE void uop_srs(struct uop *op)
+{
+    // undefined in user and system mode
+    if (arm_current_mode() == PSR_MODE_user ||
+        arm_current_mode() == PSR_MODE_sys)
+        uop_undefined(op);
+
+    //printf("srs: base offset %d writeback_offset %d mode 0x%x\n",
+    //    op->srs_rfe.base_offset, op->srs_rfe.writeback_offset, op->srs_rfe.mode);
+
+    // grab a pointer to the banked stack pointer
+    // it may be the current mode, in which case grab a pointer to the active r13
+    reg_t *banked_sp;
+    if (arm_current_mode() == op->srs_rfe.mode) {
+        banked_sp = &cpu.r[13];
+    } else {
+        switch (op->srs_rfe.mode) {
+            case PSR_MODE_user:
+            case PSR_MODE_sys:
+                banked_sp = &cpu.usr_regs[0];
+                break;
+            case PSR_MODE_fiq:
+                banked_sp = &cpu.fiq_regs[5];
+                break;
+            case PSR_MODE_irq:
+                banked_sp = &cpu.irq_regs[0];
+                break;
+            case PSR_MODE_svc:
+                banked_sp = &cpu.svc_regs[0];
+                break;
+            case PSR_MODE_abt:
+                banked_sp = &cpu.abt_regs[0];
+                break;
+            case PSR_MODE_und:
+                banked_sp = &cpu.und_regs[0];
+                break;
+            default:
+                uop_undefined(op);
+                return;
+        }
+    }
+
+    word addr = *banked_sp;
+    addr += op->srs_rfe.base_offset;
+
+    // write lr and spsr to the stack we have picked
+    if (mmu_write_mem_word(addr, cpu.r[14]))
+        return; // data abort
+    if (mmu_write_mem_word(addr + 4, cpu.spsr))
+        return; // data abort
+
+    // writeback to the stack pointer, 0 for no writeback
+    *banked_sp += op->srs_rfe.writeback_offset;
+
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_MISC);
+#endif
+}
+
+static inline __ALWAYS_INLINE void uop_rfe(struct uop *op)
+{
+    if (!arm_in_priviledged())
+        uop_undefined(op);
+
+    word addr = get_reg(op->srs_rfe.base_reg);
+    word saved_base = addr;
+    addr += op->srs_rfe.base_offset;
+
+    //printf("RFE: base_reg %d base_offset %d writeback %d\n", op->srs_rfe.base_reg, op->srs_rfe.base_offset, op->srs_rfe.writeback_offset);
+
+    // load new pc and spsr from base register
+    word new_pc;
+    word new_cpsr;
+    if (mmu_read_mem_word(addr, &new_pc))
+        return; // data abort
+    if (mmu_read_mem_word(addr + 4, &new_cpsr))
+        return; // data abort
+
+    // writeback to the base reg, 0 for no writeback
+    saved_base += op->srs_rfe.writeback_offset;
+    put_reg(op->srs_rfe.base_reg, saved_base);
+
+    // set the cpu mode
+    set_cpu_mode(new_cpsr & PSR_MODE_MASK);
+    cpu.cpsr = new_cpsr;
+
+    // restore pc
+    put_reg(PC, new_pc);
+
+#if COUNT_ARM_OPS
+    inc_perf_counter(OP_MISC);
+#endif
+}
+
 static inline __ALWAYS_INLINE void uop_undefined(struct uop *op)
 {
     atomic_or(&cpu.pending_exceptions, EX_UNDEFINED);
@@ -3384,6 +3482,12 @@ int uop_dispatch_loop(void)
                 break;
             case CPS:
                 uop_cps(op);
+                break;
+            case SRS:
+                uop_srs(op);
+                break;
+            case RFE:
+                uop_rfe(op);
                 break;
             case UNDEFINED:
                 uop_undefined(op);
